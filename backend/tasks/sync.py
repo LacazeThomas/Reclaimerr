@@ -2086,6 +2086,7 @@ async def sync_movies(
                 # accumulate resolved tag labels per movie across all Radarr instances
                 movie_tags: dict[int, set[str]] = {}
                 movie_arr_files: dict[int, list[tuple[int, str | None, datetime]]] = {}
+                movie_first_imports: dict[int, datetime] = {}
                 for config_id, client in radarr_clients.items():
                     await session.execute(
                         sql_delete(MovieArrRef).where(
@@ -2094,6 +2095,14 @@ async def sync_movies(
                     )
                     all_movies = await client.get_all_movies()
                     tag_list = await client.get_tags()
+                    try:
+                        first_imports = await client.get_first_import_dates()
+                    except Exception as exc:
+                        LOG.warning(
+                            f"Radarr import history unavailable (config {config_id}); "
+                            f"preserving known first import dates: {exc}"
+                        )
+                        first_imports = {}
                     id_to_label: dict[int, str] = {t.id: t.label for t in tag_list}
                     for arr_movie in all_movies:
                         if not arr_movie.tmdb_id:
@@ -2101,6 +2110,12 @@ async def sync_movies(
                         movie_id = movie_id_by_tmdb.get(arr_movie.tmdb_id)
                         if movie_id is None:
                             continue
+                        imported_at = first_imports.get(arr_movie.id)
+                        if imported_at is not None:
+                            movie_first_imports[movie_id] = min(
+                                movie_first_imports.get(movie_id, imported_at),
+                                imported_at,
+                            )
                         arr_path = (
                             str(PurePosixPath(normalize_fpath(arr_movie.path)))
                             if arr_movie.path
@@ -2139,6 +2154,17 @@ async def sync_movies(
                         result_row.arr_added_at = max(
                             (added_at for _, _, added_at in arr_files), default=None
                         )
+                        imported_at = movie_first_imports.get(movie_id)
+                        if imported_at is not None:
+                            persisted = result_row.arr_first_import_at
+                            result_row.arr_first_import_at = (
+                                min(
+                                    ensure_utc(persisted).replace(tzinfo=None),
+                                    imported_at,
+                                )
+                                if persisted is not None
+                                else imported_at
+                            )
 
                         versions = versions_by_movie.get(movie_id, [])
                         for version in versions:
