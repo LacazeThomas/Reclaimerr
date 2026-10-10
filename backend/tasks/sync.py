@@ -2087,12 +2087,8 @@ async def sync_movies(
                 movie_tags: dict[int, set[str]] = {}
                 movie_arr_files: dict[int, list[tuple[int, str | None, datetime]]] = {}
                 movie_first_imports: dict[int, datetime] = {}
+                snapshots = []
                 for config_id, client in radarr_clients.items():
-                    await session.execute(
-                        sql_delete(MovieArrRef).where(
-                            MovieArrRef.service_config_id == config_id
-                        )
-                    )
                     all_movies = await client.get_all_movies()
                     tag_list = await client.get_tags()
                     try:
@@ -2103,6 +2099,15 @@ async def sync_movies(
                             f"preserving known first import dates: {exc}"
                         )
                         first_imports = {}
+                    snapshots.append((config_id, all_movies, tag_list, first_imports))
+
+                # Network pagination must finish before acquiring SQLite's write lock.
+                for config_id, all_movies, tag_list, first_imports in snapshots:
+                    await session.execute(
+                        sql_delete(MovieArrRef).where(
+                            MovieArrRef.service_config_id == config_id
+                        )
+                    )
                     id_to_label: dict[int, str] = {t.id: t.label for t in tag_list}
                     for arr_movie in all_movies:
                         if not arr_movie.tmdb_id:
