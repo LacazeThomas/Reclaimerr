@@ -43,9 +43,11 @@ from backend.models.media import (
     AggregatedMovieData,
     AggregatedSeasonData,
     AggregatedSeriesData,
+    ArrTag,
     EpisodeVersionData,
     MovieVersionData,
 )
+from backend.models.services.radarr import RadarrMovie
 from backend.services.admin_notices import reconcile_stale_library_notice
 from backend.services.emby import EmbyService
 from backend.services.episode_ordering import EpisodeOrderingSnapshot, ordering_error
@@ -2087,7 +2089,9 @@ async def sync_movies(
                 movie_tags: dict[int, set[str]] = {}
                 movie_arr_files: dict[int, list[tuple[int, str | None, datetime]]] = {}
                 movie_first_imports: dict[int, datetime] = {}
-                snapshots = []
+                snapshots: list[
+                    tuple[int, list[RadarrMovie], list[ArrTag], dict[int, datetime]]
+                ] = []
                 for config_id, client in radarr_clients.items():
                     all_movies = await client.get_all_movies()
                     tag_list = await client.get_tags()
