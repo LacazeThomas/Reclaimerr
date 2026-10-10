@@ -1521,6 +1521,10 @@ class Series(Base):
         DateTime, default=None, init=False
     )
 
+    arr_first_import_at: Mapped[datetime | None] = mapped_column(
+        DateTime, default=None, init=False
+    )
+
     # relationships
     service_refs: Mapped[list[SeriesServiceRef]] = relationship(
         back_populates="series",

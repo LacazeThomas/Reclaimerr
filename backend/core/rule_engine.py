@@ -144,7 +144,7 @@ FIELD_LABELS: dict[str, str] = {
     "media.container": "Container",
     "media.days_since_added": "Days since added",
     "arr.days_since_file_added": "Days since latest Arr file added",
-    "arr.days_since_first_import": "Days since first Radarr import",
+    "arr.days_since_first_import": "Days since first Arr import",
     "watch.view_count": "View count",
     "watch.days_since_last_watched": "Days since watched",
     "watch.last_viewed_at": "Last watched",
@@ -748,6 +748,7 @@ TARGET_SCOPE_ALLOWED_FIELDS: dict[str, set[str]] = {
         "movie.version_count",
     },
     TARGET_SERIES: {
+        "arr.days_since_first_import",
         "anilist.favourites",
         "anilist.popularity",
         "anilist.score",
@@ -2737,6 +2738,9 @@ def _build_context(
             **_media_server_genre_context(refs),
             "media.days_since_added": _days_between(series.added_at, now),
             "arr.days_since_file_added": _days_between(series.arr_added_at, now),
+            "arr.days_since_first_import": _days_between(
+                series.arr_first_import_at, now
+            ),
             "watch.view_count": series.view_count,
             "watch.last_viewed_at": _last_viewed,
             "watch.days_since_last_watched": _days_between(_last_viewed, now),

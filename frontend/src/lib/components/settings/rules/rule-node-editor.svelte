@@ -386,7 +386,7 @@
     },
     {
       value: "arr.days_since_first_import",
-      label: "Days since first Radarr import",
+      label: "Days since first Arr import",
       kind: "number",
       operators: numericOperators,
       defaultOperator: "greater_than_or_equal",
@@ -1394,6 +1394,7 @@
       "trakt.vote_count",
     ]),
     series: new Set<string>([
+      "arr.days_since_first_import",
       "anilist.favourites",
       "anilist.popularity",
       "anilist.score",
