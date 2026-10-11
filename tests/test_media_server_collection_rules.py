@@ -48,6 +48,43 @@ def test_plex_collection_name_mapping_dedupes_children() -> None:
     asyncio.run(run())
 
 
+def test_plex_collection_children_use_collections_endpoint() -> None:
+    # smart collections only resolve their members through the collections
+    # endpoint; library/metadata/{id}/children returns nothing for them
+    requested: list[str] = []
+
+    class TestPlexService(PlexService):
+        async def _make_request(
+            self,
+            endpoint: str,
+            params: dict[str, Any] | None = None,
+            **kwargs: Any,
+        ) -> tuple[dict[str, Any], int]:
+            requested.append(endpoint)
+            return {
+                "MediaContainer": {
+                    "Metadata": [
+                        {"ratingKey": "m2"},
+                        {"ratingKey": "m1"},
+                        {"ratingKey": "m2"},
+                    ]
+                }
+            }, 200
+
+    async def run() -> None:
+        service = TestPlexService(token="token", plex_url="http://plex")
+
+        try:
+            result = await service._get_collection_child_ids_ordered("c9")
+        finally:
+            await service.session.close()
+
+        assert requested == ["library/collections/c9/children"]
+        assert result == ["m2", "m1"]
+
+    asyncio.run(run())
+
+
 def test_emby_collection_name_mapping_dedupes_children() -> None:
     class TestEmbyService(EmbyService):
         async def _make_request(

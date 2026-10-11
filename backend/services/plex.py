@@ -541,9 +541,11 @@ class PlexService:
 
     async def _get_collection_child_ids_ordered(self, collection_id: str) -> list[str]:
         """Return a collection's rating keys in the order Plex serves them."""
+        # the collections endpoint evaluates smart collection filters; the
+        # metadata endpoint returns nothing for smart collections
         try:
             data, _ = await self._make_request(
-                f"library/metadata/{collection_id}/children",
+                f"library/collections/{collection_id}/children",
                 timeout=120,
             )
         except Exception:
