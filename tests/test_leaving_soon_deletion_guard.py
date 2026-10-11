@@ -24,6 +24,7 @@ from backend.enums import LeavingSoonCollectionSort, MediaType, Service
 from backend.services.emby_base import EmbyServiceBase
 from backend.services.plex import PlexService
 from backend.tasks import cleanup
+from backend.utils.helpers import LeavingSoonVisibility
 
 
 class LeavingSoonAdapterPruneTests(unittest.IsolatedAsyncioTestCase):
@@ -100,22 +101,29 @@ class LeavingSoonAdapterPruneTests(unittest.IsolatedAsyncioTestCase):
                 self.created.append(kwargs)
                 return "collection-2"
 
-            async def _apply_collection_sort(self, **kwargs: Any) -> None:
+            async def _apply_collection_sort(self, **kwargs: Any) -> str | None:
                 self.sorted_calls.append(kwargs)
+                return kwargs["collection_id"]
 
             async def _apply_collection_poster(self, **kwargs: Any) -> str | None:
                 self.poster_calls.append(kwargs)
                 return kwargs["collection_id"]
 
+            async def _apply_collection_visibility(self, **kwargs: Any) -> None:
+                self.visibility_calls.append(kwargs)
+
         fake = FakePlex()
         fake.poster_calls = []  # type: ignore[attr-defined]
         fake.sorted_calls = []  # type: ignore[attr-defined]
+        fake.visibility_calls = []  # type: ignore[attr-defined]
+        visibility = LeavingSoonVisibility(home=True)
         await PlexService.prune_leaving_soon_items(
             fake,  # type: ignore[arg-type]
             movie_title="Leaving Soon [Movies]",
             series_title="Leaving Soon [Series]",
             movie_item_ids={"remove"},
             series_item_ids=set(),
+            collection_visibility=visibility,
         )
 
         self.assertEqual(fake.deleted, [("movies", "collection-1")])
@@ -153,6 +161,18 @@ class LeavingSoonAdapterPruneTests(unittest.IsolatedAsyncioTestCase):
                     "section_id": "movies",
                     "collection_title": "Leaving Soon [Movies]",
                     "poster": None,
+                }
+            ],
+        )
+        # and the visibility, which Plex also keys to the dropped rating key
+        self.assertEqual(
+            fake.visibility_calls,  # type: ignore[attr-defined]
+            [
+                {
+                    "collection_id": "collection-2",
+                    "section_id": "movies",
+                    "collection_title": "Leaving Soon [Movies]",
+                    "visibility": visibility,
                 }
             ],
         )
@@ -741,8 +761,14 @@ class LeavingSoonPlexCollectionSortTests(unittest.IsolatedAsyncioTestCase):
                     **kwargs,
                 )
 
-            async def _apply_collection_sort(self, **kwargs: Any) -> None:
-                await PlexService._apply_collection_sort(
+            async def _apply_collection_sort(self, **kwargs: Any) -> str | None:
+                return await PlexService._apply_collection_sort(
+                    self,  # type: ignore[arg-type]
+                    **kwargs,
+                )
+
+            async def _apply_collection_visibility(self, **kwargs: Any) -> None:
+                await PlexService._apply_collection_visibility(
                     self,  # type: ignore[arg-type]
                     **kwargs,
                 )
@@ -871,6 +897,60 @@ class LeavingSoonPlexCollectionSortTests(unittest.IsolatedAsyncioTestCase):
 
         # the collection itself still exists; only the ordering was skipped
         self.assertEqual(len(fake.session.posts), 1)
+
+
+class LeavingSoonPlexCollectionVisibilityTests(unittest.IsolatedAsyncioTestCase):
+    """Adapter-level coverage for the Plex-only "Visible on" hubs."""
+
+    async def _sync(self, visibility: LeavingSoonVisibility) -> Any:
+        fake = LeavingSoonPlexCollectionSortTests._fake_plex()
+        await PlexService.sync_leaving_soon_collections(
+            fake,  # type: ignore[arg-type]
+            movie_title="Leaving Soon [Movies]",
+            series_title=None,
+            movie_item_ids={"10"},
+            series_item_ids=set(),
+            collection_visibility=visibility,
+        )
+        return fake
+
+    async def test_all_off_leaves_the_hubs_alone(self) -> None:
+        fake = await self._sync(LeavingSoonVisibility())
+
+        # only the collection create; no hub management call at all
+        self.assertEqual(
+            [post["url"] for post in fake.session.posts],
+            ["http://plex/library/collections"],
+        )
+
+    async def test_home_promotes_to_own_and_shared_home(self) -> None:
+        fake = await self._sync(LeavingSoonVisibility(home=True))
+
+        self.assertEqual(len(fake.session.posts), 2)
+        hub_post = fake.session.posts[1]
+        self.assertEqual(hub_post["url"], "http://plex/hubs/sections/1/manage")
+        self.assertEqual(
+            hub_post["params"],
+            {
+                "metadataItemId": "col-new",
+                "promotedToRecommended": "0",
+                "promotedToOwnHome": "1",
+                "promotedToSharedHome": "1",
+            },
+        )
+
+    async def test_recommended_only(self) -> None:
+        fake = await self._sync(LeavingSoonVisibility(recommended=True))
+
+        self.assertEqual(
+            fake.session.posts[1]["params"],
+            {
+                "metadataItemId": "col-new",
+                "promotedToRecommended": "1",
+                "promotedToOwnHome": "0",
+                "promotedToSharedHome": "0",
+            },
+        )
 
 
 class LeavingSoonEmbySortIsIgnoredTests(unittest.IsolatedAsyncioTestCase):

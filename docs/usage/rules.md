@@ -48,9 +48,9 @@ Saved rules are independent copies. Edit and import/export them normally; future
 | Cleanup candidate | Matching media enters the normal review and deletion workflow |
 | Automated protection | Matching media is protected from cleanup without creating a candidate |
 
-Automated protections are reconciled on each cleanup scan. They are added when a rule starts matching and removed when that same rule no longer matches, is disabled, or is deleted. Manual protections are not changed by this process. Library Scope applies to both cleanup candidate and automated protection outcomes.
+Automated protections are reconciled on each cleanup scan. They are added when a rule starts matching and removed when that same rule no longer matches, is disabled, or is deleted. Manual protections are not changed by this process.
 
-Library Scope lists the libraries of the configured main media server, since only the main server contributes library contents. With more than one media server configured each library is listed under that server's name, so two servers' identically-named libraries stay distinguishable; with one server the heading is left off. See [Multi-Server Setup](../getting-started/configuration.md#multi-server-setup).
+To limit a rule to specific libraries, add a **Library** condition. Without one, the rule covers every library of its media type. This applies to both cleanup candidate and automated protection outcomes. The Library picker lists the libraries of the configured main media server, since only the main server contributes library contents. With more than one media server configured, each library is shown with that server's name, so identically-named libraries on two servers stay distinguishable. A library ID the main server no longer has, for example after switching main servers, is listed as **Unknown library** so you can remove it. See [Multi-Server Setup](../getting-started/configuration.md#multi-server-setup).
 
 Each protection rule creates its own managed protection entry for a matching item. These entries are read-only on the Protected page because changing the rule is the source of truth. If a protection rule and a candidate rule match the same item, protection always takes precedence.
 
@@ -163,7 +163,7 @@ Provider-specific media-server genres also fail closed when their provider is no
 
 ## Field Reference
 
-The rule editor only displays fields valid for the selected scope. The following fields have behavior or units that are important when constructing a rule.
+The rule editor only displays fields valid for the selected scope. The following fields have behavior or units that are important when constructing a rule. [Rule Fields](../reference/rule-fields.md) lists every field with its JSON key, operators, and scopes.
 
 ### General Media Fields
 
@@ -415,7 +415,7 @@ When a series is mapped to multiple Sonarr instances, `true` wins if any instanc
 
 If you keep the same series twice - an HD copy and a UHD copy - both share one set of season records, so season fields such as size, path, resolution, and HDR describe whichever copy your main media server reported, not the copy you had in mind. A condition like `video.height is 2160` therefore cannot reliably single out the UHD copy.
 
-Set the rule's **Sonarr instance** to say which copy you mean. Reclaimerr then deletes only from that instance. Without it, the copy is chosen by matching paths, and if the series exists in more than one Sonarr with no path match, the deletion is refused rather than sent to a guess. Movies do not have this limitation: they keep a record per file, so version conditions and `Library Scope` address them individually.
+Set the rule's **Sonarr instance** to say which copy you mean. Reclaimerr then deletes only from that instance. Without it, the copy is chosen by matching paths, and if the series exists in more than one Sonarr with no path match, the deletion is refused rather than sent to a guess. Movies do not have this limitation: they keep a record per file, so version conditions and **Library** conditions address them individually.
 
 Typical protection rules are:
 
@@ -542,6 +542,12 @@ If no applicable source is configured, a native snapshot refresh fails, an impor
 
 Immediately before automatic deletion, eligible candidates whose matched rules use playback fields are checked again against freshly refreshed data. An item that was watched after becoming a candidate, or whose playback state cannot be observed safely, is not authorized for deletion by that playback rule.
 
+## Import and Export
+
+**Export** on the Rules page saves rules as a JSON file, and **Import** loads one. The file format is documented on [Rule Format](../reference/rule-format.md), and every field key is listed on [Rule Fields](../reference/rule-fields.md). Those two pages are enough for an AI assistant to draft rules you can import.
+
+Rules other users have shared are on [Community Rules](../community-rules/index.md).
+
 ## Validation and Editing
 
 - Operator choices are limited to operators supported by the selected field.
@@ -567,3 +573,6 @@ Immediately before automatic deletion, eligible candidates whose matched rules u
 - [Tasks](tasks.md)
 - [External API](../reference/api.md)
 - [Internal UI API](../reference/internal-api.md)
+- [Rule Format](../reference/rule-format.md)
+- [Rule Fields](../reference/rule-fields.md)
+- [Community Rules](../community-rules/index.md)

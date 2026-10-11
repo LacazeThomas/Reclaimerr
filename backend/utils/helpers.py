@@ -14,6 +14,7 @@ __all__ = [
     "LeavingSoonPosters",
     "LeavingSoonThumbs",
     "LeavingSoonTitles",
+    "LeavingSoonVisibility",
     "leaving_soon_titles_from_base_title",
     "normalize_leaving_soon_collection_sort",
     "normalize_leaving_soon_movie_title",
@@ -62,6 +63,22 @@ class LeavingSoonThumbs(LeavingSoonPosters):
     Only Jellyfin and Emby have a separate thumb image; a Plex collection's
     thumb is its poster.
     """
+
+
+@dataclass(frozen=True, slots=True)
+class LeavingSoonVisibility:
+    """Where the managed collections are promoted on the media server.
+
+    Plex only: `recommended` is the library's Recommended tab, `home` covers
+    both the owner's and shared users' Home screens. All-off leaves the server
+    alone.
+    """
+
+    recommended: bool = False
+    home: bool = False
+
+    def __bool__(self) -> bool:
+        return self.recommended or self.home
 
 
 def _normalize_title(value: object, default: str) -> str:

@@ -23,6 +23,7 @@
     type RequesterWatchUserMapping,
   } from "$lib/types/shared";
   import Notice from "$lib/components/notice.svelte";
+  import DatabaseBackups from "$lib/components/settings/general/database-backups.svelte";
   import { auth } from "$lib/stores/auth";
   import {
     DEFAULT_NEW_USER_ALLOWED_PAGES,
@@ -73,6 +74,8 @@
   let applicationUrl = $state("");
   let playbackMovieMinSeconds = $state(15);
   let playbackEpisodeMinSeconds = $state(7);
+  let databaseBackupRetention = $state(4);
+  let requesterWarningDays = $state(7);
   let favoritesIgnoreEnabled = $state(false);
   let favoritesProtectAllUsers = $state(false);
   let favoritesUsernamesInput = $state("");
@@ -90,6 +93,8 @@
     DEFAULT_LEAVING_SOON_SERIES_TITLE,
   );
   let leavingSoonCollectionSort = $state<LeavingSoonCollectionSort>("default");
+  let leavingSoonVisibleOnRecommended = $state(false);
+  let leavingSoonVisibleOnHome = $state(false);
   // posters and thumbs are saved the moment they are picked, unlike everything
   // else on this page, so they are keyed by kind rather than folded into the
   // payload
@@ -197,6 +202,22 @@
           "Minimum playback durations must be whole numbers from 0 to 3600 seconds",
         );
       }
+      if (
+        !Number.isInteger(databaseBackupRetention) ||
+        databaseBackupRetention < 1 ||
+        databaseBackupRetention > 100
+      ) {
+        throw new Error("Backups to keep must be a whole number from 1 to 100");
+      }
+      if (
+        !Number.isInteger(requesterWarningDays) ||
+        requesterWarningDays < 0 ||
+        requesterWarningDays > 90
+      ) {
+        throw new Error(
+          "Requester warning days must be a whole number from 0 to 90",
+        );
+      }
 
       // save settings to backend
       await put_api("/api/settings/general", {
@@ -220,6 +241,8 @@
         application_url: applicationUrl.trim() || null,
         playback_movie_min_seconds: playbackMovieMinSeconds,
         playback_episode_min_seconds: playbackEpisodeMinSeconds,
+        database_backup_retention: databaseBackupRetention,
+        requester_warning_days: requesterWarningDays,
         favorites_ignore_enabled: favoritesIgnoreEnabled,
         favorites_protect_all_users: favoritesProtectAllUsers,
         favorites_usernames: parseFavoritesUsernames(favoritesUsernamesInput),
@@ -230,6 +253,8 @@
         leaving_soon_movie_collection_title: leavingSoonMovieTitle,
         leaving_soon_series_collection_title: leavingSoonSeriesTitle,
         leaving_soon_collection_sort: leavingSoonCollectionSort,
+        leaving_soon_visible_on_recommended: leavingSoonVisibleOnRecommended,
+        leaving_soon_visible_on_home: leavingSoonVisibleOnHome,
       });
       toast.success("General settings saved");
     } catch (error) {
@@ -454,6 +479,8 @@
         applicationUrl = settings.application_url ?? "";
         playbackMovieMinSeconds = settings.playback_movie_min_seconds ?? 15;
         playbackEpisodeMinSeconds = settings.playback_episode_min_seconds ?? 7;
+        databaseBackupRetention = settings.database_backup_retention ?? 4;
+        requesterWarningDays = settings.requester_warning_days ?? 7;
         favoritesIgnoreEnabled = settings.favorites_ignore_enabled ?? false;
         favoritesProtectAllUsers =
           settings.favorites_protect_all_users ?? false;
@@ -477,6 +504,10 @@
           DEFAULT_LEAVING_SOON_SERIES_TITLE;
         leavingSoonCollectionSort =
           settings.leaving_soon_collection_sort ?? "default";
+        leavingSoonVisibleOnRecommended =
+          settings.leaving_soon_visible_on_recommended ?? false;
+        leavingSoonVisibleOnHome =
+          settings.leaving_soon_visible_on_home ?? false;
         leavingSoonArtwork = {
           poster: {
             movies: settings.leaving_soon_movie_poster_path ?? null,
@@ -852,6 +883,45 @@
             front.
             <strong>Server default</strong> leaves the collection's own ordering untouched.
           </p>
+        </div>
+
+        <!-- plex hub visibility -->
+        <div class="mt-4">
+          <span class="text-sm text-foreground font-medium"
+            >Visible on (Plex)</span
+          >
+          <p class="text-xs text-muted-foreground mt-1">
+            Reclaimerr rebuilds these collections on every sync, which drops any
+            "Visible on" choice made in Plex. Set it here instead and it is
+            re-applied after each rebuild. Leave both off to let Plex decide.
+          </p>
+          <div class="grid gap-2 sm:grid-cols-2 max-w-2xl mt-3">
+            <Label
+              class="flex items-start gap-2 rounded-md border border-border bg-background/40 p-3 text-sm
+                text-foreground cursor-pointer"
+            >
+              <Checkbox bind:checked={leavingSoonVisibleOnRecommended} />
+              <span>
+                <span class="font-medium">Library Recommended</span>
+                <span class="block text-xs text-muted-foreground">
+                  Show as a row on the library's Recommended tab.
+                </span>
+              </span>
+            </Label>
+            <Label
+              class="flex items-start gap-2 rounded-md border border-border bg-background/40 p-3 text-sm
+                text-foreground cursor-pointer"
+            >
+              <Checkbox bind:checked={leavingSoonVisibleOnHome} />
+              <span>
+                <span class="font-medium">Home</span>
+                <span class="block text-xs text-muted-foreground">
+                  Show as a row on your Home screen and shared users' Home
+                  screens.
+                </span>
+              </span>
+            </Label>
+          </div>
         </div>
 
         <!-- custom collection posters -->
@@ -1235,6 +1305,25 @@
         overrides can replace these defaults; when multiple auto-delete-enabled
         rules match, the longest delay wins. Use 0 for immediate eligibility.
       </p>
+      <div class="space-y-2 mb-3 sm:max-w-xs">
+        <Label for="requesterWarningDays" class="text-sm text-foreground">
+          Warn requesters before deletion (days)
+        </Label>
+        <Input
+          id="requesterWarningDays"
+          type="number"
+          min="0"
+          max="90"
+          step="1"
+          bind:value={requesterWarningDays}
+        />
+      </div>
+      <p class="text-xs text-muted-foreground mb-3">
+        After each cleanup scan, Seerr requesters get one notification when
+        something they requested will be auto-deleted within this many days.
+        Only requesters linked to a Reclaimerr account through Plex, Jellyfin,
+        Emby, or email can be notified. Use 0 to turn warnings off.
+      </p>
       <div
         class="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm text-foreground"
       >
@@ -1341,6 +1430,8 @@
         file for that movie or series is gone.
       </p>
     </div>
+
+    <DatabaseBackups bind:retention={databaseBackupRetention} />
 
     <!-- shutdown (desktop mode / admin only) -->
     {#if isAdmin}

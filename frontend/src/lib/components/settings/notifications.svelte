@@ -6,6 +6,7 @@
   import type { NotificationEmailStatus } from "$lib/types/shared";
   import SmtpSettings from "./notifications/smtp-settings.svelte";
   import Mail from "@lucide/svelte/icons/mail";
+  import MessageSquare from "@lucide/svelte/icons/message-square";
   import { Button } from "$lib/components/ui/button/index.js";
   import { Switch } from "$lib/components/ui/switch/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
@@ -49,6 +50,7 @@
     updateAvailable: boolean;
     deleteRequestExecutionSucceeded: boolean;
     deleteRequestExecutionFailed: boolean;
+    requesterLeavingSoon: boolean;
     preferences: Record<string, { detail: string; max_items?: number }>;
   }
 
@@ -101,6 +103,7 @@
       "deleteRequestExecutionSucceeded",
     [NotificationType.DeleteRequestExecutionFailed]:
       "deleteRequestExecutionFailed",
+    [NotificationType.RequesterLeavingSoon]: "requesterLeavingSoon",
   };
 
   const defaultPreferences = () => ({
@@ -118,6 +121,7 @@
     [NotificationType.AdminDeleteExecutionFailed]: { detail: "standard" },
     [NotificationType.DeleteRequestExecutionSucceeded]: { detail: "standard" },
     [NotificationType.DeleteRequestExecutionFailed]: { detail: "standard" },
+    [NotificationType.RequesterLeavingSoon]: { detail: "standard" },
     [NotificationType.UpdateAvailable]: { detail: "standard" },
   });
 
@@ -205,6 +209,13 @@
       adminOnly: false,
     },
     {
+      type: NotificationType.RequesterLeavingSoon,
+      label: "Your Requests Leaving Soon",
+      description:
+        "Notified before something you requested in Seerr is deleted automatically",
+      adminOnly: false,
+    },
+    {
       type: NotificationType.UpdateAvailable,
       label: "Update Available",
       description: "Notified once when a newer Reclaimerr release is published",
@@ -236,6 +247,7 @@
           update_available: boolean;
           delete_request_execution_succeeded: boolean;
           delete_request_execution_failed: boolean;
+          requester_leaving_soon: boolean;
           preferences?: Record<string, { detail?: string; max_items?: number }>;
         }>
       >("/api/settings/notifications");
@@ -259,6 +271,7 @@
         updateAvailable: n.update_available,
         deleteRequestExecutionSucceeded: n.delete_request_execution_succeeded,
         deleteRequestExecutionFailed: n.delete_request_execution_failed,
+        requesterLeavingSoon: n.requester_leaving_soon,
         preferences: normalizedPreferences(n.preferences),
       }));
     } catch (err: any) {
@@ -268,9 +281,16 @@
     }
   }
 
+  // markdown is what makes apprise send a discord embed instead of plain text
+  const DISCORD_WEBHOOK_PLACEHOLDER = "WEBHOOK_ID/WEBHOOK_TOKEN";
+  const DISCORD_PRESET_URL =
+    `discord://Reclaimerr@${DISCORD_WEBHOOK_PLACEHOLDER}?format=markdown` +
+    "&avatar_url=https://raw.githubusercontent.com/jessielw/Reclaimerr/refs/heads/main/public/logo.png";
+
   // add new notification with default values
   function addNotification(
     channel: NotificationChannel = NotificationChannel.Apprise,
+    preset: { name: string; url: string } | null = null,
   ) {
     const newId = Date.now() * -1; // generate a unique negative ID for new notifications
     notifications = [
@@ -278,9 +298,11 @@
       {
         id: newId,
         enabled: true,
-        name: channel === NotificationChannel.SystemEmail ? "Email" : "",
+        name:
+          preset?.name ??
+          (channel === NotificationChannel.SystemEmail ? "Email" : ""),
         channel,
-        url: "",
+        url: preset?.url ?? "",
         targetEmail: "",
         newCleanupCandidates: false,
         requestApproved: false,
@@ -294,6 +316,7 @@
         updateAvailable: false,
         deleteRequestExecutionSucceeded: false,
         deleteRequestExecutionFailed: false,
+        requesterLeavingSoon: true,
         preferences: defaultPreferences(),
       },
     ];
@@ -340,6 +363,7 @@
           notification.deleteRequestExecutionSucceeded,
         delete_request_execution_failed:
           notification.deleteRequestExecutionFailed,
+        requester_leaving_soon: notification.requesterLeavingSoon,
         preferences: notification.preferences,
       };
 
@@ -364,6 +388,7 @@
           update_available: boolean;
           delete_request_execution_succeeded: boolean;
           delete_request_execution_failed: boolean;
+          requester_leaving_soon: boolean;
           preferences?: Record<string, { detail?: string; max_items?: number }>;
         };
       }>("/api/settings/notifications", payload);
@@ -391,6 +416,7 @@
           response.data.delete_request_execution_succeeded,
         deleteRequestExecutionFailed:
           response.data.delete_request_execution_failed,
+        requesterLeavingSoon: response.data.requester_leaving_soon,
         preferences: normalizedPreferences(response.data.preferences),
       };
 
@@ -559,6 +585,18 @@
           Add Email
         </Button>
       {/if}
+      <Button
+        variant="outline"
+        onclick={() =>
+          addNotification(NotificationChannel.Apprise, {
+            name: "Discord",
+            url: DISCORD_PRESET_URL,
+          })}
+        class="cursor-pointer gap-2"
+      >
+        <MessageSquare />
+        Add Discord
+      </Button>
       <Button onclick={() => addNotification()} class="cursor-pointer gap-2">
         <Plus />
         Add Notification Service
@@ -832,6 +870,16 @@
                       class="input-hover-el font-mono text-sm"
                       rows={3}
                     ></Textarea>
+                    {#if notification.url.includes(DISCORD_WEBHOOK_PLACEHOLDER)}
+                      <p
+                        class="mt-1 text-xs text-amber-600 dark:text-amber-400"
+                      >
+                        Replace <code>WEBHOOK_ID/WEBHOOK_TOKEN</code> with the
+                        last two parts of your Discord webhook URL (<code
+                          >https://discord.com/api/webhooks/ID/TOKEN</code
+                        >).
+                      </p>
+                    {/if}
                     <p class="mt-1 text-xs text-muted-foreground">
                       Enter your Apprise-compatible notification URL. See <a
                         href="https://appriseit.com/getting-started/universal-syntax/"

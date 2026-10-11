@@ -32,6 +32,7 @@ from backend.core.rule_engine import (
     EPISODE_WATCH_PROGRESS_FIELDS,
     FAVORITES_RULE_FIELDS,
     PLAYBACK_RULE_FIELDS,
+    PLAYBACK_USERNAME_FIELDS,
     RANK_RULE_FIELDS,
     REGEX_OPERATORS,
     RULE_OUTCOME_CANDIDATE,
@@ -56,6 +57,7 @@ from backend.core.rule_engine import (
     SonarrRuleDataResolver,
     SonarrRuleValue,
     WatchCompletionResolver,
+    WatchUserAliasResolver,
     collect_rule_conditions,
     evaluate_advanced_rule,
     evaluate_advanced_rule_state,
@@ -167,10 +169,12 @@ from backend.services.playback_history import (
     refresh_playback_history,
 )
 from backend.services.radarr import RadarrClient
+from backend.services.requester_warnings import warn_requesters_before_deletion
 from backend.services.seerr_cache import SeerrRequestSnapshot, seerr_snapshot_cache
 from backend.services.sonarr import SonarrClient
 from backend.services.watch_identity import (
     AliasIndex,
+    aliases_by_name,
     expand_watch_keys,
     load_watch_user_alias_index,
 )
@@ -178,6 +182,7 @@ from backend.utils.helpers import (
     LeavingSoonPosters,
     LeavingSoonThumbs,
     LeavingSoonTitles,
+    LeavingSoonVisibility,
     normalize_leaving_soon_collection_sort,
     normalize_leaving_soon_movie_title,
     normalize_leaving_soon_series_title,
@@ -1183,6 +1188,7 @@ async def collect_rule_preview_matches_with_metadata(
     metadata.seerr_unavailable = not seerr_ready
     metadata.seerr_error = seerr_error
 
+    await _activate_watch_user_aliases_for_rules(db, list(rules))
     await _activate_watch_completion_for_rules(
         db,
         list(rules),
@@ -1404,6 +1410,11 @@ async def scan_cleanup_candidates() -> None:
                             )
                         except Exception as e:
                             LOG.error(f"Error sending cleanup scan notification: {e}")
+                try:
+                    async with async_db() as session:
+                        await warn_requesters_before_deletion(session)
+                except Exception as e:
+                    LOG.error(f"Error sending requester leaving-soon warnings: {e}")
                 # candidates that dropped out of this scan must not keep their
                 # managed tag until the next scheduled tag sync
                 await reconcile_candidate_arr_tags("cleanup scan")
@@ -4224,6 +4235,22 @@ def _completed_watchers(
     }
 
 
+async def _activate_watch_user_aliases_for_rules(
+    db: AsyncSession, rules: list[ReclaimRule]
+) -> None:
+    """Let playback username conditions match every name a person is stored under.
+
+    Loaded once per evaluation run; the per-item comparison only reads it.
+    """
+    if not _rules_use_any_field(
+        rules, PLAYBACK_USERNAME_FIELDS | USER_SCOPED_PLAYBACK_FIELDS
+    ):
+        WatchUserAliasResolver({}).activate()
+        return
+    alias_index = await load_watch_user_alias_index(db)
+    WatchUserAliasResolver(aliases_by_name(alias_index)).activate()
+
+
 async def _activate_watch_completion_for_rules(
     db: AsyncSession,
     rules: list[ReclaimRule],
@@ -4631,6 +4658,7 @@ async def _load_leaving_soon_collection_settings(
     LeavingSoonCollectionSort,
     LeavingSoonPosters,
     LeavingSoonThumbs,
+    LeavingSoonVisibility,
 ]:
     settings_row = (await db.execute(select(GeneralSettings))).scalars().first()
     default_titles = LeavingSoonTitles(
@@ -4646,6 +4674,7 @@ async def _load_leaving_soon_collection_settings(
             LeavingSoonCollectionSort.DEFAULT,
             LeavingSoonPosters(),
             LeavingSoonThumbs(),
+            LeavingSoonVisibility(),
         )
     collection_titles = LeavingSoonTitles(
         movies=normalize_leaving_soon_movie_title(
@@ -4668,6 +4697,10 @@ async def _load_leaving_soon_collection_settings(
         ),
         load_leaving_soon_posters(settings_row),
         load_leaving_soon_thumbs(settings_row),
+        LeavingSoonVisibility(
+            recommended=bool(settings_row.leaving_soon_visible_on_recommended),
+            home=bool(settings_row.leaving_soon_visible_on_home),
+        ),
     )
 
 
@@ -5062,6 +5095,7 @@ async def _sync_leaving_soon_collections(db: AsyncSession) -> None:
         collection_sort,
         collection_posters,
         collection_thumbs,
+        collection_visibility,
     ) = await _load_leaving_soon_collection_settings(db)
     if not enabled:
         await _cleanup_disabled_leaving_soon_collections(
@@ -5153,6 +5187,7 @@ async def _sync_leaving_soon_collections(db: AsyncSession) -> None:
                 series_poster=collection_posters.series,
                 movie_thumb=collection_thumbs.movies,
                 series_thumb=collection_thumbs.series,
+                collection_visibility=collection_visibility,
             )
         except Exception as e:
             service_success = False
@@ -5199,6 +5234,7 @@ async def push_leaving_soon_posters(db: AsyncSession) -> None:
         _collection_sort,
         collection_posters,
         _collection_thumbs,
+        _collection_visibility,
     ) = await _load_leaving_soon_collection_settings(db)
     if settings_row is None or not enabled or not collection_posters:
         return
@@ -5245,6 +5281,7 @@ async def push_leaving_soon_thumbs(db: AsyncSession) -> None:
         _collection_sort,
         _collection_posters,
         collection_thumbs,
+        _collection_visibility,
     ) = await _load_leaving_soon_collection_settings(db)
     if settings_row is None or not enabled or not collection_thumbs:
         return
@@ -5423,6 +5460,7 @@ async def _prune_leaving_soon_before_candidate_actions(
             collection_sort,
             collection_posters,
             _collection_thumbs,
+            collection_visibility,
         ) = await _load_leaving_soon_collection_settings(db)
         if not enabled:
             return
@@ -5481,6 +5519,7 @@ async def _prune_leaving_soon_before_candidate_actions(
                     collection_sort=collection_sort,
                     movie_poster=collection_posters.movies,
                     series_poster=collection_posters.series,
+                    collection_visibility=collection_visibility,
                 )
             except Exception as e:
                 raise RuntimeError(
@@ -5648,6 +5687,7 @@ async def _scan_with_db(db: AsyncSession) -> tuple[int, int, int] | None:
                     f"this run: {seerr_skip_reason}"
                 )
 
+        await _activate_watch_user_aliases_for_rules(db, list(rules))
         await _activate_watch_completion_for_rules(
             db,
             list(rules),

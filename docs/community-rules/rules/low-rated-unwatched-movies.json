@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Low-rated unwatched movies",
+    "description": "Movies added more than 90 days ago that nobody has watched and that rate below 5.5 on TMDB with at least 100 votes. The vote floor keeps obscure titles with a handful of ratings out of the match.",
+    "media_type": "movie",
+    "enabled": false,
+    "target_scope": "movie_version",
+    "definition": {
+      "version": 1,
+      "root": {
+        "type": "group",
+        "op": "and",
+        "children": [
+          {
+            "type": "condition",
+            "field": "media.days_since_added",
+            "operator": "greater_than",
+            "value": 90
+          },
+          {
+            "type": "condition",
+            "field": "watch.never_watched",
+            "operator": "is_true"
+          },
+          {
+            "type": "condition",
+            "field": "tmdb.vote_average",
+            "operator": "less_than",
+            "value": 5.5
+          },
+          {
+            "type": "condition",
+            "field": "tmdb.vote_count",
+            "operator": "greater_than_or_equal",
+            "value": 100
+          }
+        ]
+      }
+    },
+    "action": {
+      "outcome": "candidate",
+      "arr_action": "delete",
+      "tag_enabled": false,
+      "auto_delete_enabled": false
+    }
+  }
+]

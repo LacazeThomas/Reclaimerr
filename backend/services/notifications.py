@@ -59,6 +59,17 @@ _MAX_ERROR_CHARS = 1500
 _MAX_TITLE_SUBJECT_CHARS = 80
 _MAX_REASON_TOKENS = 3
 
+# Without an asset Apprise brands every message as itself: Discord embeds carry
+# an "Apprise" author line and email falls back to "Apprise" as the from name.
+# The severity icon mask is left alone so transports keep their per-type icons.
+_LOGO_URL = "https://raw.githubusercontent.com/jessielw/Reclaimerr/refs/heads/main/public/logo.png"
+_APPRISE_ASSET = apprise.AppriseAsset(
+    app_id="Reclaimerr",
+    app_desc="Reclaimerr",
+    app_url="https://github.com/jessielw/Reclaimerr",
+    image_url_logo=_LOGO_URL,
+)
+
 # Apprise maps the notify type onto each transport's own severity styling,
 # which is what colours a Discord embed or picks an ntfy/Gotify priority.
 _NOTIFY_TYPES: dict[NotificationType, apprise.NotifyType] = {
@@ -73,6 +84,7 @@ _NOTIFY_TYPES: dict[NotificationType, apprise.NotifyType] = {
     NotificationType.ADMIN_DELETE_EXECUTION_FAILED: apprise.NotifyType.FAILURE,
     NotificationType.DELETE_REQUEST_EXECUTION_SUCCEEDED: apprise.NotifyType.SUCCESS,
     NotificationType.DELETE_REQUEST_EXECUTION_FAILED: apprise.NotifyType.FAILURE,
+    NotificationType.REQUESTER_LEAVING_SOON: apprise.NotifyType.WARNING,
     NotificationType.UPDATE_AVAILABLE: apprise.NotifyType.INFO,
 }
 
@@ -89,6 +101,7 @@ _NOTIFICATION_LINKS: dict[NotificationType, tuple[str, str]] = {
     NotificationType.ADMIN_DELETE_EXECUTION_FAILED: ("/requests", "View requests"),
     NotificationType.DELETE_REQUEST_EXECUTION_SUCCEEDED: ("/requests", "View requests"),
     NotificationType.DELETE_REQUEST_EXECUTION_FAILED: ("/requests", "View requests"),
+    NotificationType.REQUESTER_LEAVING_SOON: ("/candidates", "Request protection"),
     NotificationType.ADMIN_MESSAGE: ("/", "Open Reclaimerr"),
     NotificationType.TASK_FAILURE: ("/", "Open Reclaimerr"),
 }
@@ -445,6 +458,21 @@ def _compose_body(
         )
         return title, _body(lead, fields, context.get("error")), _DEFAULT_BODY_FORMAT
 
+    if notification_type is NotificationType.REQUESTER_LEAVING_SOON:
+        titles = context.get("titles")
+        titles = (
+            [t for t in titles if isinstance(t, dict)]
+            if isinstance(titles, list)
+            else []
+        )
+        if len(titles) < 2:
+            return title, lead, _DEFAULT_BODY_FORMAT
+        lines = [lead, ""]
+        lines.extend(
+            f"- **{t.get('label')}**{_SEPARATOR}{t.get('when')}" for t in titles
+        )
+        return title, "\n".join(lines), _DEFAULT_BODY_FORMAT
+
     if notification_type is NotificationType.ADMIN_MESSAGE:
         fields = _field_lines(
             (
@@ -669,7 +697,7 @@ async def send_notification(
     logged verbatim; callers pass a label and everything else falls back to the
     URL, which is what the user typed in themselves.
     """
-    ap = apprise.Apprise()
+    ap = apprise.Apprise(asset=_APPRISE_ASSET)
     ap.add(url)
     label = log_label or url
 
@@ -973,6 +1001,7 @@ def _notification_type_to_field(notification_type: NotificationType) -> str:
         NotificationType.ADMIN_DELETE_EXECUTION_FAILED: "admin_delete_execution_failed",
         NotificationType.DELETE_REQUEST_EXECUTION_SUCCEEDED: "delete_request_execution_succeeded",
         NotificationType.DELETE_REQUEST_EXECUTION_FAILED: "delete_request_execution_failed",
+        NotificationType.REQUESTER_LEAVING_SOON: "requester_leaving_soon",
         NotificationType.UPDATE_AVAILABLE: "update_available",
     }
 

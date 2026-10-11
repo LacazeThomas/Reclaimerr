@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.6] - 2026-10-11
+
+### Added
+
+- **Database backups.** A new weekly **Back Up Database** task saves a copy of the database to `backups/` in the data folder and keeps the newest 4 (adjustable under **Settings → General → Database Backups**). The same card has a **Download backup now** button and lists earlier backups. Backups contain API keys and tokens, so only admins can download them. Restore steps are in the Backups docs.
+- **Dashboard widget support.** `GET /api/v1/stats` returns candidate counts, reclaimable and reclaimed space, pending requests, and the next automatic deletion, for dashboards such as Homepage. It needs an API token with the `system:read` scope. The docs include a ready-to-paste Homepage `customapi` example.
+- **Requesters are warned before deletion.** When something a Seerr user requested is due for automatic deletion, they get a notification a set number of days before (default 7, under **Settings → General**; 0 turns it off), with a link to request protection. Several titles arrive in one message, and each title warns only once. It only reaches requesters linked to a Reclaimerr account through Plex, Jellyfin, Emby, or email. Others are skipped and counted in the log. The new **Your Requests Leaving Soon** notification type is on for existing destinations.
+- **Re-add from History.** Deleted movies and series have a **Re-add** button on the History page. Pick the Radarr or Sonarr instance, root folder, and quality profile, and the title is added back, monitored, with an optional search. Its import exclusion is removed too. If the title is still in Radarr or Sonarr (for example, only one version or season was deleted), the dialog says so instead. A series needs a known TVDB ID; otherwise the dialog explains why it can't be re-added. Needs admin or the Manage Reclaim permission.
+- **Export CSV** on the Candidates and History pages downloads every item that matches the current filters, not just the page on screen. Candidates include title, year, type, scope, size, matched rules, flagged date, and auto-delete date. History includes date, title, type, action, size, who approved it, and the file path.
+- Optional **External URL** for Radarr, Sonarr, and Seerr. Links on media pages use it instead of the Base URL, so instances reached by an internal hostname (e.g. a Docker container name) still open correctly in the browser.
+- **Leaving Soon collections on the Plex Home screen.** New **Visible on (Plex)** checkboxes under **Settings → General → Leaving Soon Collections**: **Library Recommended** and **Home** (your Home and shared users' Home). Reclaimerr rebuilds these collections on every sync, which used to reset a "Visible on" choice made in Plex. The choice is now re-applied after each rebuild and takes effect on the next sync. Both are off by default, which leaves Plex alone. Jellyfin and Emby have no equivalent and are unaffected.
+- **Rule file format docs.** New **Rule Format** and **Rule Fields** reference pages document the JSON that **Rules → Export** writes and **Import** reads. They cover every field key, operator, scope, and action setting, with examples. Give both pages to an AI assistant and it can draft rules you can import. Rule Fields is generated from the rule engine, so it stays current.
+- **Community Rules.** A new docs page collects rules shared by users, each as a file you can import directly. To share one, add your exported rule in a pull request. Tests check that every shared rule imports cleanly, starts disabled, and contains no IDs or usernames from your own install.
+- **Add Discord** button under **Settings → Notifications**. It fills in a Discord URL that sends rich embeds with the Reclaimerr name and logo. Replace `WEBHOOK_ID/WEBHOOK_TOKEN` with the last two parts of your Discord webhook URL.
+- Candidate groups with only one flagged item now show **Protect** and **Delete** (and **Move**, when enabled) on the main row, so the group no longer has to be expanded first. This covers a movie with one flagged version and a series with one flagged season or episode. These buttons act on that one item only. Groups with several flagged items still use the buttons on each item.
+
+### Changed
+
+- Candidate action buttons now show tooltips for movies and series that name what each button acts on, for example **Protect version**, **Delete season**, or **Move episode to destination**.
+- The separate **Library Scope** section of the rule editor is gone. Libraries are now set with a **Library** condition in the rule tree, which has a searchable picker that shows library names instead of raw library IDs. IDs are still what gets saved, and existing rules keep their libraries; they now appear as the first condition. A library ID the main server no longer has is listed as **Unknown library**, so it can be spotted and removed. A path condition that no longer matches anything in the chosen libraries is reported when you save, instead of being pruned when the scope changes.
+- Notifications are branded as Reclaimerr instead of Apprise. Discord embeds no longer show an "Apprise" author line, and email sent without a from name now comes from "Reclaimerr".
+- Bumped a few dependencies.
+- Update platformdirs.
+- Frontend has had packages updated that could have security vulnerabilities.
+
+### Fixed
+
+- **Select Playback Users** in rules listed Plex users who are no longer shared, and the server owner, as bare account numbers, often next to the same person's name from Tautulli. It now lists each person once, by name. Rules that name a person also match plays Plex stored under their account number, and rules that already hold an account number keep working. Accounts no service can name are listed last as "Plex account … (name unknown)".
+- A series flagged as a whole while some of its seasons or episodes were also flagged had no **Protect** or **Delete** button for the whole-series entry. It could only be acted on through the group checkbox. The buttons now appear on the series row.
+- Fixed smart collections for Plex not showing up in the rule node selector.
+
 ## [0.5.5] - 2026-10-05
 
 ### Added

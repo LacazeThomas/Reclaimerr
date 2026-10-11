@@ -73,6 +73,7 @@ from backend.tasks.cleanup import (
     collect_rule_preview_matches_with_metadata,
     explain_requester_watch,
 )
+from backend.utils.helpers import LeavingSoonVisibility
 
 
 def _make_rule(media_type: MediaType, **overrides: object) -> ReclaimRule:
@@ -371,6 +372,7 @@ class _LeavingSoonSyncServiceFake:
         series_poster: bytes | None = None,
         movie_thumb: bytes | None = None,
         series_thumb: bytes | None = None,
+        collection_visibility: LeavingSoonVisibility = LeavingSoonVisibility(),
     ) -> None:
         if self._fail_sync:
             raise RuntimeError("sync failure")
@@ -386,6 +388,7 @@ class _LeavingSoonSyncServiceFake:
                 "series_poster": series_poster,
                 "movie_thumb": movie_thumb,
                 "series_thumb": series_thumb,
+                "collection_visibility": collection_visibility,
             }
         )
 
@@ -6027,6 +6030,7 @@ class CleanupScanIntegrationTests(unittest.IsolatedAsyncioTestCase):
             settings.leaving_soon_movie_poster_path = "movies.jpg"
             settings.leaving_soon_series_poster_path = "missing.jpg"
             settings.leaving_soon_series_thumb_path = "series-thumb.jpg"
+            settings.leaving_soon_visible_on_home = True
             rule = _make_rule(
                 MediaType.MOVIE,
                 min_size=1,
@@ -6091,6 +6095,10 @@ class CleanupScanIntegrationTests(unittest.IsolatedAsyncioTestCase):
         # thumbs travel alongside the posters, each read independently
         self.assertIsNone(call["movie_thumb"])
         self.assertEqual(call["series_thumb"], b"series-thumb-bytes")
+        # Plex visibility is keyed to the rebuilt collection, so it travels too
+        self.assertEqual(
+            call["collection_visibility"], LeavingSoonVisibility(home=True)
+        )
 
     async def test_scan_skips_leaving_soon_sync_when_disabled(self) -> None:
         async with self._sessionmaker() as db:

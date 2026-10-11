@@ -17,6 +17,7 @@
   import GenrePicker from "$lib/components/settings/rules/genre-picker.svelte";
   import MediaServerCollectionPicker from "$lib/components/settings/rules/media-server-collection-picker.svelte";
   import MetadataValuePicker from "$lib/components/settings/rules/metadata-value-picker.svelte";
+  import LibraryMultiSelect from "$lib/components/settings/rules/library-multi-select.svelte";
   import FolderSearch from "@lucide/svelte/icons/folder-search";
   import ChevronsUpDown from "@lucide/svelte/icons/chevrons-up-down";
   import GripVertical from "@lucide/svelte/icons/grip-vertical";
@@ -45,6 +46,7 @@
     type Options as DndOptions,
   } from "svelte-dnd-action";
   import type {
+    LibraryType,
     MediaType,
     RuleCondition,
     RuleConditionOperator,
@@ -60,6 +62,8 @@
     targetScope?: RuleTargetScope;
     pathPickerMediaType?: MediaType;
     pathPickerLibraryIds?: string[] | null;
+    libraries?: LibraryType[];
+    qualifyLibraries?: boolean;
     onChange: () => void;
     onRemove?: () => void;
   }
@@ -109,6 +113,8 @@
     targetScope = "movie_version",
     pathPickerMediaType = undefined,
     pathPickerLibraryIds = null,
+    libraries = [],
+    qualifyLibraries = false,
     onChange,
     onRemove,
   }: Props = $props();
@@ -2252,6 +2258,8 @@
                 {targetScope}
                 {pathPickerMediaType}
                 {pathPickerLibraryIds}
+                {libraries}
+                {qualifyLibraries}
                 {onChange}
                 onRemove={() => removeChild(node, item.node)}
               />
@@ -2479,6 +2487,14 @@
                 </span>
               </Button>
             </div>
+          {:else if node.field === "library.id" && libraries.length > 0}
+            <LibraryMultiSelect
+              {libraries}
+              selectedIds={normalizeValueList(node.value)}
+              qualify={qualifyLibraries}
+              triggerClass="flex-1 min-w-0"
+              onChange={(ids) => applyMetadataValues(node, ids)}
+            />
           {:else if (node.field === "series.status" || node.field === "sonarr.series_status") && !listOperators.has(node.operator)}
             <Select.Root
               type="single"

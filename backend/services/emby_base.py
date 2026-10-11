@@ -54,6 +54,7 @@ from backend.services.playback_guard import (
     guard_native_removal,
     playback_step_completed,
 )
+from backend.utils.helpers import LeavingSoonVisibility
 
 RawSQL: TypeAlias = str
 JsonDict: TypeAlias = dict[str, Any]
@@ -242,6 +243,7 @@ class EmbyServiceBase:
         series_poster: bytes | None = None,
         movie_thumb: bytes | None = None,
         series_thumb: bytes | None = None,
+        collection_visibility: LeavingSoonVisibility = LeavingSoonVisibility(),
     ) -> None:
         """Sync managed Leaving Soon collections for movies and series.
 
@@ -256,8 +258,11 @@ class EmbyServiceBase:
         item-move endpoint, so an explicit order cannot be expressed; the only
         way to force one would be rewriting each item's ForcedSortName, which
         would reorder the user's whole library, not just this collection.
+
+        `collection_visibility` is accepted and ignored: it maps to Plex's
+        "Visible on" hubs, which have no per-collection BoxSet equivalent.
         """
-        del collection_sort, item_deadlines
+        del collection_sort, item_deadlines, collection_visibility
         if movie_title := str(movie_title or "").strip():
             await self._sync_leaving_soon_collection(
                 collection_title=movie_title,
@@ -301,15 +306,16 @@ class EmbyServiceBase:
         ),
         movie_poster: bytes | None = None,
         series_poster: bytes | None = None,
+        collection_visibility: LeavingSoonVisibility = LeavingSoonVisibility(),
     ) -> None:
         """Remove items from managed collections before destructive media actions.
 
-        `collection_sort` is accepted and ignored; see
+        `collection_sort` and `collection_visibility` are accepted and ignored; see
         `sync_leaving_soon_collections`. The posters are ignored too: a prune
         removes items from the existing BoxSet rather than rebuilding it, so its
         artwork is never lost and there is nothing to restore.
         """
-        del collection_sort, movie_poster, series_poster
+        del collection_sort, collection_visibility, movie_poster, series_poster
         if movie_title := str(movie_title or "").strip():
             await self._prune_leaving_soon_collection(
                 collection_title=movie_title,

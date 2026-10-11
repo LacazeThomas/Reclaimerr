@@ -208,6 +208,7 @@ export enum NotificationType {
   AdminDeleteExecutionFailed = "admin_delete_execution_failed",
   DeleteRequestExecutionSucceeded = "delete_request_execution_succeeded",
   DeleteRequestExecutionFailed = "delete_request_execution_failed",
+  RequesterLeavingSoon = "requester_leaving_soon",
   UpdateAvailable = "update_available",
 }
 
@@ -323,6 +324,8 @@ export interface GeneralSettings {
   application_url: string | null;
   playback_movie_min_seconds: number;
   playback_episode_min_seconds: number;
+  database_backup_retention: number;
+  requester_warning_days: number;
   favorites_ignore_enabled: boolean;
   favorites_protect_all_users: boolean;
   favorites_usernames: string[];
@@ -333,6 +336,9 @@ export interface GeneralSettings {
   leaving_soon_movie_collection_title: string;
   leaving_soon_series_collection_title: string;
   leaving_soon_collection_sort: LeavingSoonCollectionSort;
+  // Plex "Visible on" hubs; home covers both own and shared users' Home
+  leaving_soon_visible_on_recommended: boolean;
+  leaving_soon_visible_on_home: boolean;
   // filenames served from /static/collection-posters; managed by the poster
   // and thumb upload and delete endpoints, never sent back on the settings PUT.
   leaving_soon_movie_poster_path: string | null;
@@ -1531,6 +1537,30 @@ export interface ReclaimHistoryEntry {
   action: string;
   destination_path: string | null;
   created_at: string;
+}
+
+export interface ReAddInstance {
+  service_config_id: number;
+  service_name: string;
+  root_folders: string[];
+  quality_profiles: { id: number; name: string }[];
+  already_added: boolean;
+  error: string | null;
+}
+
+export interface ReAddOptions {
+  history_id: number;
+  media_type: string;
+  service: "radarr" | "sonarr";
+  title: string | null;
+  unavailable_reason: string | null;
+  instances: ReAddInstance[];
+}
+
+export interface ReAddResponse {
+  message: string;
+  title: string;
+  exclusion_removed: boolean;
 }
 
 export interface DashboardRequestsSummary {

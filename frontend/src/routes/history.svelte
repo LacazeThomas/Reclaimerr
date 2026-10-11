@@ -3,9 +3,12 @@
   import HistoryIcon from "@lucide/svelte/icons/history";
   import RotateCw from "@lucide/svelte/icons/rotate-cw";
   import Search from "@lucide/svelte/icons/search";
+  import Download from "@lucide/svelte/icons/download";
+  import ArchiveRestore from "@lucide/svelte/icons/archive-restore";
   import { get_api } from "$lib/api";
   import { auth } from "$lib/stores/auth";
   import ErrorBox from "$lib/components/error-box.svelte";
+  import ReAddDialog from "$lib/components/history/re-add-dialog.svelte";
   import CompactPagination from "$lib/components/compact-pagination.svelte";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
@@ -46,6 +49,17 @@
       ($auth.user?.permissions ?? []).includes(Permission.ManageReclaim) ||
       ($auth.user?.permissions ?? []).includes(Permission.ManageRequests),
   );
+  const canReAdd = $derived(
+    isAdmin ||
+      ($auth.user?.permissions ?? []).includes(Permission.ManageReclaim),
+  );
+
+  let reAddOpen = $state(false);
+  let reAddEntry = $state<ReclaimHistoryEntry | null>(null);
+  const openReAdd = (entry: ReclaimHistoryEntry) => {
+    reAddEntry = entry;
+    reAddOpen = true;
+  };
 
   const _historySearchStore = createFilterState("history_search", "");
   const _historyMediaTypeStore = createFilterState("history_media_type", "all");
@@ -173,6 +187,14 @@
     if (historySearch.trim()) params.set("search", historySearch.trim());
     return `/api/media/reclaim-history?${params.toString()}`;
   };
+
+  // same filters as the feed, every page
+  const historyExportUrl = $derived.by(() => {
+    const params = new URLSearchParams({ sort_order: historySortOrder });
+    if (historyMediaType !== "all") params.set("media_type", historyMediaType);
+    if (historySearch.trim()) params.set("search", historySearch.trim());
+    return `/api/media/reclaim-history/export?${params.toString()}`;
+  });
 
   const buildActivityEndpoint = (page: number) => {
     const params = new URLSearchParams({
@@ -440,6 +462,7 @@
   };
 
   const historyActionLabel = (entry: ReclaimHistoryEntry) => {
+    if (entry.action === "re-added") return "Re-added";
     if (!canViewDetailedHistory) return "Reclaimed";
     switch (entry.action) {
       case "moved":
@@ -786,11 +809,25 @@
     {/if}
 
     <section class="space-y-4">
-      <div>
-        <h2 class="text-xl font-semibold text-foreground">Reclaim Feed</h2>
-        <p class="text-sm text-muted-foreground">
-          A running record of media that has already been reclaimed.
-        </p>
+      <div
+        class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between"
+      >
+        <div>
+          <h2 class="text-xl font-semibold text-foreground">Reclaim Feed</h2>
+          <p class="text-sm text-muted-foreground">
+            A running record of media that has already been reclaimed.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          class="gap-2"
+          href={historyExportUrl}
+          download
+          title="Download every record matching the current filters"
+        >
+          <Download class="size-4" />
+          Export CSV
+        </Button>
       </div>
 
       <div class="flex flex-col gap-2 lg:flex-row">
@@ -951,6 +988,21 @@
                     <p class="text-xs">
                       {formatDateTimeToLocaleString(entry.created_at)}
                     </p>
+                    {#if canReAdd && entry.action === "deleted" && entry.tmdb_id != null}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        class="mt-2 gap-2"
+                        title="Add this title back to {entry.media_type ===
+                        MediaType.Movie
+                          ? 'Radarr'
+                          : 'Sonarr'}"
+                        onclick={() => openReAdd(entry)}
+                      >
+                        <ArchiveRestore class="size-4" />
+                        Re-add
+                      </Button>
+                    {/if}
                   </div>
                 </div>
               </article>
@@ -980,3 +1032,9 @@
     </section>
   </div>
 </div>
+
+<ReAddDialog
+  bind:open={reAddOpen}
+  entry={reAddEntry}
+  onSuccess={() => loadHistory(historyPage)}
+/>

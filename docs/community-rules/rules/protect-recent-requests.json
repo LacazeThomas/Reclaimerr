@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Protect recent requests",
+    "description": "Protect movies with an active Seerr request made in the last 30 days, so a requester has time to watch before any cleanup rule can flag the movie. Needs Seerr configured.",
+    "media_type": "movie",
+    "enabled": false,
+    "target_scope": "movie_version",
+    "definition": {
+      "version": 1,
+      "root": {
+        "type": "group",
+        "op": "and",
+        "children": [
+          {
+            "type": "condition",
+            "field": "seerr.days_since_last_requested",
+            "operator": "less_than_or_equal",
+            "value": 30
+          }
+        ]
+      }
+    },
+    "action": {
+      "outcome": "protect"
+    }
+  }
+]

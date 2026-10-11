@@ -9,18 +9,13 @@
   import { Textarea } from "$lib/components/ui/textarea/index.js";
   import * as Select from "$lib/components/ui/select/index.js";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
   import Eye from "@lucide/svelte/icons/eye";
   import CompactPagination from "$lib/components/compact-pagination.svelte";
   import Notice from "$lib/components/notice.svelte";
   import PosterThumb from "$lib/components/requests/poster-thumb.svelte";
   import MediaTypeBadge from "$lib/components/requests/media-type-badge.svelte";
-  import JellyfinSVG from "$lib/components/svgs/jellyfin-svg.svelte";
-  import PlexSVG from "$lib/components/svgs/plex-svg.svelte";
-  import EmbySVG from "$lib/components/svgs/emby-svg.svelte";
   import RadarrSVG from "$lib/components/svgs/radarr-svg.svelte";
   import SonarrSVG from "$lib/components/svgs/sonarr-svg.svelte";
-  import TriangleAlert from "@lucide/svelte/icons/triangle-alert";
   import ArrowLeft from "@lucide/svelte/icons/arrow-left";
   import Save from "@lucide/svelte/icons/save";
   import RuleNodeEditor from "$lib/components/settings/rules/rule-node-editor.svelte";
@@ -32,7 +27,6 @@
   import {
     MEDIA_SERVERS,
     MediaType,
-    SettingsTab,
     type LibraryType,
     type PaginatedRulePreviewResponse,
     type QualityProfileLookup,
@@ -177,11 +171,6 @@
   let radarrInstances = $state<ArrInstance[]>([]);
   let sonarrInstances = $state<ArrInstance[]>([]);
   let saving = $state(false);
-  let evaluatingLibraryChange = $state(false);
-  let libraryChangeDialogOpen = $state(false);
-  let pendingLibrarySelection = $state<string[] | null>(null);
-  let pendingInvalidPaths = $state<PathValidationCriterion[]>([]);
-  let pendingTotalPaths = $state(0);
 
   // preview states
   let previewDialogOpen = $state(false);
@@ -217,34 +206,6 @@
   // not say whose Movies the rule is scoped to.
   const qualifyLibraries = $derived(mediaServerCount > 1);
 
-  const libraryInstanceLabel = (library: LibraryType) =>
-    library.serviceName ||
-    (library.serviceConfigId !== null
-      ? `${library.serviceType} #${library.serviceConfigId}`
-      : library.serviceType);
-
-  const libraryGroups = $derived.by(() => {
-    const byInstance = new Map<
-      string,
-      { key: string; label: string; libraries: LibraryType[] }
-    >();
-    for (const library of scopeLibraries) {
-      const key = `${library.serviceType}:${library.serviceConfigId ?? "?"}`;
-      const existing = byInstance.get(key);
-      if (existing) {
-        existing.libraries.push(library);
-        continue;
-      }
-      byInstance.set(key, {
-        key,
-        label: libraryInstanceLabel(library),
-        libraries: [library],
-      });
-    }
-    return [...byInstance.values()].sort((l, r) =>
-      l.label.localeCompare(r.label),
-    );
-  });
   const scopeLibraryIds = $derived(
     new Set(scopeLibraries.map((library) => library.libraryId)),
   );
@@ -375,44 +336,11 @@
     "not_exists",
   ]);
 
-  const pathValidationOperators = new Set<RuleConditionOperator>([
-    "equals",
-    "in",
-    "contains_any",
-    "contains_all",
-    "matches_any_regex",
-  ]);
-
-  type PathValidationField = "media.path" | "media.file_name";
-  type PathValidationCriterion = {
-    field: PathValidationField;
-    operator: RuleConditionOperator;
-    value: string;
-  };
-
-  const isPathValidationField = (field: string): field is PathValidationField =>
-    field === "media.path" || field === "media.file_name";
-
-  const pathCriterionKey = (
-    field: PathValidationField,
-    operator: RuleConditionOperator,
-    value: string,
-  ) => `${field}::${operator}::${value}`;
-
   // normalize library ids from a condition value, ensuring it's always an array of non empty strings
   const normalizeLibraryIds = (value: RuleCondition["value"]) =>
     (Array.isArray(value) ? value : [value])
       .filter((id): id is string | number => id !== null && id !== undefined)
       .map((id) => String(id).trim())
-      .filter(Boolean);
-
-  const normalizePathPatterns = (value: RuleCondition["value"]) =>
-    (Array.isArray(value) ? value : [value])
-      .filter(
-        (pattern): pattern is string | number =>
-          pattern !== null && pattern !== undefined,
-      )
-      .map((pattern) => String(pattern).trim())
       .filter(Boolean);
 
   const hasValidConditions = (node: RuleNode): boolean => {
@@ -427,145 +355,6 @@
       return node.field === "library.id" ? [node] : [];
     }
     return node.children.flatMap(collectLibraryConditions);
-  };
-
-  const collectPathConditions = (node: RuleNode): RuleCondition[] => {
-    if (node.type === "condition") {
-      return isPathValidationField(node.field) ? [node] : [];
-    }
-    return node.children.flatMap(collectPathConditions);
-  };
-
-  const collectPathCriteria = (
-    root: RuleDefinition["root"],
-  ): PathValidationCriterion[] => {
-    const seen = new Set<string>();
-    const criteria: PathValidationCriterion[] = [];
-    for (const condition of collectPathConditions(root)) {
-      if (!isPathValidationField(condition.field)) continue;
-      if (!pathValidationOperators.has(condition.operator)) continue;
-      for (const value of normalizePathPatterns(condition.value)) {
-        const key = pathCriterionKey(
-          condition.field,
-          condition.operator,
-          value,
-        );
-        if (seen.has(key)) continue;
-        seen.add(key);
-        criteria.push({
-          field: condition.field,
-          operator: condition.operator,
-          value,
-        });
-      }
-    }
-    return criteria;
-  };
-
-  // find a single canonical library.id condition at the root level with the expected structure
-  const getCanonicalLibraryCondition = (
-    root: RuleDefinition["root"],
-  ): RuleCondition | null => {
-    const match = root.children.find(
-      (child) =>
-        child.type === "condition" &&
-        child.field === "library.id" &&
-        child.operator === "contains_any" &&
-        Array.isArray(child.value),
-    );
-    return match?.type === "condition" ? match : null;
-  };
-
-  // read the current library scope state from the rule definition, determining selected library ids
-  // and whether custom conditions are present
-  const readLibraryScopeState = (
-    root: RuleDefinition["root"],
-  ): {
-    selectedIds: string[];
-    hasCustomCondition: boolean;
-  } => {
-    const allLibraryConditions = collectLibraryConditions(root);
-    const canonical = getCanonicalLibraryCondition(root);
-    const hasOnlyCanonical =
-      canonical !== null &&
-      allLibraryConditions.length === 1 &&
-      allLibraryConditions[0] === canonical;
-
-    return {
-      selectedIds: canonical ? normalizeLibraryIds(canonical.value) : [],
-      hasCustomCondition: allLibraryConditions.length > 0 && !hasOnlyCanonical,
-    };
-  };
-
-  // initialize library scope state from the initial rule definition
-  const initialLibraryScope = readLibraryScopeState(initial.definition.root);
-  let selectedScopeLibraryIds = $state<string[]>(
-    initialLibraryScope.selectedIds,
-  );
-  let hasCustomLibraryCondition = $state(
-    initialLibraryScope.hasCustomCondition,
-  );
-
-  // recursively rebuild the rule definition, removing any library.id conditions
-  const rebuildDefinitionWithoutLibraryConditions = (
-    node: RuleNode,
-  ): RuleNode | null => {
-    if (node.type === "condition") {
-      return node.field === "library.id" ? null : node;
-    }
-
-    const children = node.children
-      .map(rebuildDefinitionWithoutLibraryConditions)
-      .filter((child): child is RuleNode => child !== null);
-
-    if (children.length === 0) return null;
-    return {
-      ...node,
-      children,
-    };
-  };
-
-  // apply a canonical library.id condition at the root level with the given library ids
-  const applyCanonicalLibraryScope = (libraryIds: string[]) => {
-    const uniqueIds = Array.from(new Set(libraryIds));
-
-    // Remove previous canonical root library condition before re-applying.
-    definition.root.children = definition.root.children.filter(
-      (child) =>
-        !(
-          child.type === "condition" &&
-          child.field === "library.id" &&
-          child.operator === "contains_any"
-        ),
-    );
-
-    if (uniqueIds.length > 0) {
-      definition.root.children = [
-        {
-          type: "condition",
-          field: "library.id",
-          operator: "contains_any",
-          value: uniqueIds,
-        },
-        ...definition.root.children,
-      ];
-    }
-
-    definition = { ...definition };
-  };
-
-  const updateScopeLibrarySelection = (
-    libraryId: string,
-    selected: boolean,
-  ) => {
-    if (hasCustomLibraryCondition || evaluatingLibraryChange) return;
-    const next = selected
-      ? [...selectedScopeLibraryIds, libraryId]
-      : selectedScopeLibraryIds.filter((id) => id !== libraryId);
-    const filtered = next.filter((id) => scopeLibraryIds.has(id));
-    void applyScopeLibrarySelectionWithValidation(
-      Array.from(new Set(filtered)),
-    );
   };
 
   const derivePathScopeLibraryIds = (
@@ -597,143 +386,6 @@
     name.trim().length > 0 && hasValidConditions(definition.root),
   );
   const canPreviewRule = $derived(hasValidConditions(definition.root));
-
-  const pruneInvalidPathCriteriaFromNode = (
-    node: RuleNode,
-    invalid: Set<string>,
-  ): RuleNode | null => {
-    if (node.type === "condition") {
-      if (!isPathValidationField(node.field)) return node;
-      if (!pathValidationOperators.has(node.operator)) return node;
-      const field = node.field;
-      const values = normalizePathPatterns(node.value).filter(
-        (value) => !invalid.has(pathCriterionKey(field, node.operator, value)),
-      );
-      if (values.length === 0) return null;
-      return {
-        ...node,
-        value: Array.isArray(node.value) ? values : values[0],
-      };
-    }
-
-    const nextChildren = node.children
-      .map((child) => pruneInvalidPathCriteriaFromNode(child, invalid))
-      .filter((child): child is RuleNode => child !== null);
-    if (nextChildren.length === 0) return null;
-    return {
-      ...node,
-      children: nextChildren,
-    };
-  };
-
-  const applyPathPruning = (invalidCriteria: PathValidationCriterion[]) => {
-    if (invalidCriteria.length === 0) return;
-    const invalid = new Set(
-      invalidCriteria.map((criterion) =>
-        pathCriterionKey(criterion.field, criterion.operator, criterion.value),
-      ),
-    );
-    const prunedRoot = pruneInvalidPathCriteriaFromNode(
-      definition.root,
-      invalid,
-    );
-    definition.root =
-      prunedRoot?.type === "group"
-        ? prunedRoot
-        : {
-            ...definition.root,
-            children: [],
-          };
-    definition = { ...definition };
-  };
-
-  const validatePathsForScope = async (
-    nextLibraryIds: string[],
-  ): Promise<{
-    invalidCriteria: PathValidationCriterion[];
-    totalCriteria: number;
-  } | null> => {
-    const criteria = collectPathCriteria(definition.root);
-    if (criteria.length === 0) return { invalidCriteria: [], totalCriteria: 0 };
-    try {
-      const response = await post_api<{
-        valid_paths: string[];
-        invalid_paths: string[];
-        valid_conditions?: PathValidationCriterion[];
-        invalid_conditions?: PathValidationCriterion[];
-      }>("/api/rules/validate-paths", {
-        media_type: selectedMediaType,
-        library_ids: nextLibraryIds.length > 0 ? nextLibraryIds : null,
-        conditions: criteria,
-      });
-      const invalidCriteria =
-        response.invalid_conditions && response.invalid_conditions.length > 0
-          ? response.invalid_conditions
-          : (response.invalid_paths ?? []).map((value) => ({
-              field: "media.path" as const,
-              operator: "matches_any_regex" as const,
-              value,
-            }));
-      return {
-        invalidCriteria,
-        totalCriteria: criteria.length,
-      };
-    } catch (e: any) {
-      toast.error(e.message ?? "Failed to validate path criteria.");
-      return null;
-    }
-  };
-
-  const applyScopeLibrarySelectionWithValidation = async (
-    nextLibraryIds: string[],
-  ) => {
-    evaluatingLibraryChange = true;
-    const validation = await validatePathsForScope(nextLibraryIds);
-    evaluatingLibraryChange = false;
-    if (!validation) return;
-
-    if (validation.invalidCriteria.length === 0) {
-      selectedScopeLibraryIds = nextLibraryIds;
-      applyCanonicalLibraryScope(nextLibraryIds);
-      return;
-    }
-
-    pendingLibrarySelection = nextLibraryIds;
-    pendingInvalidPaths = validation.invalidCriteria;
-    pendingTotalPaths = validation.totalCriteria;
-    libraryChangeDialogOpen = true;
-  };
-
-  const confirmLibraryScopeChange = () => {
-    if (!pendingLibrarySelection) return;
-    selectedScopeLibraryIds = pendingLibrarySelection;
-    applyCanonicalLibraryScope(pendingLibrarySelection);
-    applyPathPruning(pendingInvalidPaths);
-    cancelLibraryScopeChange();
-  };
-
-  const cancelLibraryScopeChange = () => {
-    libraryChangeDialogOpen = false;
-    pendingLibrarySelection = null;
-    pendingInvalidPaths = [];
-    pendingTotalPaths = 0;
-  };
-
-  const clearCustomLibraryConditions = () => {
-    const cleanedRoot = rebuildDefinitionWithoutLibraryConditions(
-      definition.root,
-    );
-    definition.root =
-      cleanedRoot?.type === "group"
-        ? cleanedRoot
-        : {
-            ...definition.root,
-            children: [],
-          };
-    selectedScopeLibraryIds = [];
-    hasCustomLibraryCondition = false;
-    definition = { ...definition };
-  };
 
   // allowed (lowercase letters, numbers, dashes, underscores)
   function sanitizeTagInput(value: string): string {
@@ -1016,35 +668,6 @@
   };
   // --- preview helpers ----
 
-  // synchronize library scope state with rule definition, ensuring the canonical library
-  // condition is the single source of truth
-  $effect(() => {
-    const state = readLibraryScopeState(definition.root);
-    const filteredIds = state.selectedIds.filter((id) =>
-      scopeLibraryIds.has(id),
-    );
-    selectedScopeLibraryIds = filteredIds;
-    hasCustomLibraryCondition = state.hasCustomCondition;
-
-    if (
-      !state.hasCustomCondition &&
-      filteredIds.length !== state.selectedIds.length
-    ) {
-      applyCanonicalLibraryScope(filteredIds);
-    }
-  });
-
-  $effect(() => {
-    if (hasCustomLibraryCondition) return;
-    const filtered = selectedScopeLibraryIds.filter((id) =>
-      scopeLibraryIds.has(id),
-    );
-    if (filtered.length !== selectedScopeLibraryIds.length) {
-      selectedScopeLibraryIds = filtered;
-      applyCanonicalLibraryScope(filtered);
-    }
-  });
-
   onMount(() => {
     loadArrInstances();
   });
@@ -1233,89 +856,6 @@
     </div>
   </div>
 
-  <div class="rounded-lg border border-border bg-card p-5 space-y-4">
-    <div>
-      <h3 class="font-semibold text-foreground">Library Scope</h3>
-      <p class="text-sm text-muted-foreground">
-        Select libraries this rule should target. Leave all unselected to apply
-        the rule to every library in this target.
-      </p>
-      {#if qualifyLibraries}
-        <p class="text-xs text-muted-foreground mt-1">
-          Libraries come from the main media server. Linked servers contribute
-          watch data, not library contents.
-        </p>
-      {/if}
-    </div>
-
-    {#if hasCustomLibraryCondition}
-      <Notice type="warning" title="Custom Library Condition Detected">
-        Library conditions are currently customized in the rule tree. Use
-        <strong>Clear Custom Library Conditions</strong> to return to the dedicated
-        scope selector.
-      </Notice>
-      <Button
-        type="button"
-        size="sm"
-        variant="secondary"
-        class="cursor-pointer"
-        onclick={clearCustomLibraryConditions}
-      >
-        Clear Custom Library Conditions
-      </Button>
-    {/if}
-
-    {#if scopeLibraries.length > 0}
-      <div class="space-y-4">
-        {#each libraryGroups as group (group.key)}
-          <div class="space-y-2">
-            {#if qualifyLibraries}
-              <p
-                class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-              >
-                {group.label} <span class="normal-case">(main)</span>
-              </p>
-            {/if}
-            {#each group.libraries as library (`${group.key}:${library.libraryId}`)}
-              {@const switchId = `scope-library-${group.key}-${library.libraryId}`}
-              <div class="flex items-center gap-2">
-                <Switch
-                  id={switchId}
-                  checked={selectedScopeLibraryIds.includes(library.libraryId)}
-                  disabled={hasCustomLibraryCondition ||
-                    evaluatingLibraryChange}
-                  onCheckedChange={(checked) =>
-                    void updateScopeLibrarySelection(
-                      library.libraryId,
-                      checked,
-                    )}
-                />
-                <div class="flex items-center gap-1.5">
-                  <div class="w-4 h-4 shrink-0">
-                    {#if library.serviceType === SettingsTab.Jellyfin}
-                      <JellyfinSVG />
-                    {:else if library.serviceType === SettingsTab.Plex}
-                      <PlexSVG />
-                    {:else if library.serviceType === SettingsTab.Emby}
-                      <EmbySVG />
-                    {/if}
-                  </div>
-                  <Label class="text-foreground" for={switchId}>
-                    {library.libraryName}
-                  </Label>
-                </div>
-              </div>
-            {/each}
-          </div>
-        {/each}
-      </div>
-    {:else}
-      <p class="text-sm text-muted-foreground">
-        No matching libraries are configured.
-      </p>
-    {/if}
-  </div>
-
   <div class="rounded-lg border border-border bg-card p-6 space-y-5">
     <div>
       <h3 class="font-semibold text-foreground">Conditions</h3>
@@ -1326,6 +866,14 @@
       <p class="text-xs text-muted-foreground mt-1">
         Up to 10 groups total are supported per rule, with up to 4 levels of
         nesting.
+      </p>
+      <p class="text-xs text-muted-foreground mt-1">
+        Add a <strong>Library</strong> condition to limit this rule to specific
+        libraries. Without one, it applies to every library.
+        {#if qualifyLibraries}
+          Libraries come from the main media server. Linked servers contribute
+          watch data, not library contents.
+        {/if}
       </p>
       {#if !hasValidConditions(definition.root)}
         <p class="text-xs text-amber-500 mt-1">
@@ -1339,6 +887,8 @@
         {targetScope}
         pathPickerMediaType={selectedMediaType}
         pathPickerLibraryIds={selectedPathScopeLibraryIds}
+        libraries={scopeLibraries}
+        {qualifyLibraries}
         onChange={() => (definition = { ...definition })}
       />
     </div>
@@ -2143,75 +1693,3 @@
     {/if}
   </Dialog.Content>
 </Dialog.Root>
-
-<!-- library change confirmation dialog -->
-<AlertDialog.Root
-  open={libraryChangeDialogOpen}
-  onOpenChange={(open) => {
-    if (!open) cancelLibraryScopeChange();
-  }}
->
-  <AlertDialog.Content
-    class="bg-card border border-border rounded-lg p-6 max-w-xl w-full text-foreground"
-  >
-    <AlertDialog.Header>
-      <AlertDialog.Title
-        class="text-xl font-semibold text-foreground mb-2 flex items-center gap-2"
-      >
-        <TriangleAlert class="size-5 text-amber-500" />
-        Path Criteria Needs Confirmation
-      </AlertDialog.Title>
-      <AlertDialog.Description class="text-muted-foreground space-y-3">
-        {#if pendingInvalidPaths.length >= pendingTotalPaths && pendingTotalPaths > 0}
-          <p>
-            This library scope change invalidates all current path/filename
-            criteria. Confirming will clear those conditions from this rule.
-          </p>
-        {:else}
-          <p>
-            This library scope change invalidates some path/filename criteria.
-            Confirming will remove only the invalid values and keep the rest.
-          </p>
-        {/if}
-        {#if pendingInvalidPaths.length > 0}
-          <div
-            class="rounded-md border border-border bg-muted/30 p-3 max-h-44 overflow-y-auto"
-          >
-            <p
-              class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2"
-            >
-              Invalid Criteria ({pendingInvalidPaths.length})
-            </p>
-            <ul class="space-y-1.5">
-              {#each pendingInvalidPaths as criterion}
-                <li class="font-mono text-xs break-all text-foreground/90">
-                  {criterion.field}
-                  {criterion.operator}
-                  {criterion.value}
-                </li>
-              {/each}
-            </ul>
-          </div>
-        {/if}
-      </AlertDialog.Description>
-    </AlertDialog.Header>
-    <AlertDialog.Footer class="flex justify-end gap-3 pt-4">
-      <AlertDialog.Cancel
-        class="cursor-pointer hover text-foreground bg-secondary"
-        onclick={cancelLibraryScopeChange}
-      >
-        Cancel
-      </AlertDialog.Cancel>
-      <AlertDialog.Action
-        class="cursor-pointer hover"
-        onclick={confirmLibraryScopeChange}
-      >
-        {#if pendingInvalidPaths.length >= pendingTotalPaths && pendingTotalPaths > 0}
-          Clear Paths and Continue
-        {:else}
-          Remove Invalid Paths and Continue
-        {/if}
-      </AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>

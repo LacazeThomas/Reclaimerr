@@ -102,6 +102,15 @@ class ServiceConfigUpdate(BaseModel):
         self.base_url = self.base_url.strip()
         if self.api_key is not None:
             self.api_key = self.api_key.strip() or None  # treat empty string as None
+        if self.extra_settings and "external_url" in self.extra_settings:
+            external_url = str(self.extra_settings["external_url"] or "").strip()
+            # without a scheme the browser treats it as a path on Reclaimerr itself
+            if external_url and "://" not in external_url:
+                raise PydanticCustomError(
+                    "external_url_invalid",
+                    "External URL must include a scheme (e.g. http://192.168.1.2:8989)",
+                )
+            self.extra_settings["external_url"] = external_url.rstrip("/")
         if self.is_main and self.service_type not in MEDIA_SERVERS:
             raise PydanticCustomError(
                 "is_main_invalid",
@@ -153,6 +162,7 @@ def default_notification_preferences() -> dict[str, dict[str, Any]]:
             "detail": "standard"
         },
         NotificationType.DELETE_REQUEST_EXECUTION_FAILED.value: {"detail": "standard"},
+        NotificationType.REQUESTER_LEAVING_SOON.value: {"detail": "standard"},
         NotificationType.UPDATE_AVAILABLE.value: {"detail": "standard"},
     }
 
@@ -193,6 +203,7 @@ def normalize_notification_preferences(
         NotificationType.ADMIN_DELETE_EXECUTION_FAILED,
         NotificationType.DELETE_REQUEST_EXECUTION_SUCCEEDED,
         NotificationType.DELETE_REQUEST_EXECUTION_FAILED,
+        NotificationType.REQUESTER_LEAVING_SOON,
         NotificationType.UPDATE_AVAILABLE,
     ):
         key = notif_type.value
@@ -229,6 +240,7 @@ class NotificationSettingItem(BaseModel):
     update_available: bool = False
     delete_request_execution_succeeded: bool = False
     delete_request_execution_failed: bool = False
+    requester_leaving_soon: bool = True
     preferences: dict[str, dict[str, Any]] = Field(
         default_factory=default_notification_preferences
     )
@@ -365,6 +377,11 @@ class GeneralSettingsResponse(BaseModel):
     playback_movie_min_seconds: int = Field(default=15, ge=0, le=3600)
     playback_episode_min_seconds: int = Field(default=7, ge=0, le=3600)
 
+    # scheduled database backups kept in <data_dir>/backups
+    database_backup_retention: int = Field(default=4, ge=1, le=100)
+    # warn Seerr requesters this many days before automatic deletion; 0 is off
+    requester_warning_days: int = Field(default=7, ge=0, le=90)
+
     # favorites
     favorites_ignore_enabled: bool = False
     favorites_protect_all_users: bool = False
@@ -390,6 +407,8 @@ class GeneralSettingsResponse(BaseModel):
     leaving_soon_collection_sort: LeavingSoonCollectionSort = (
         LeavingSoonCollectionSort.DEFAULT
     )
+    leaving_soon_visible_on_recommended: bool = False
+    leaving_soon_visible_on_home: bool = False
     # read-only here: stored filenames served from /static/collection-posters.
     # The poster/thumb upload and delete endpoints own these; the general
     # settings PUT ignores whatever a client sends so a stale body cannot clear
@@ -693,3 +712,9 @@ class NotificationEmailStatus(BaseModel):
     available: bool = False
     account_email: str | None = None
     already_configured: bool = False
+
+
+class DatabaseBackupInfo(BaseModel):
+    name: str
+    size_bytes: int
+    created_at: datetime

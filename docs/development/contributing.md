@@ -44,6 +44,10 @@ Read the [architecture overview](architecture.md) before changing scheduler, wor
 
 CI runs `ruff check` and `ruff format --check`, so run `ruff format .` (not just `ruff check`) before pushing. Use `ruff format --check .` to verify formatting the same way CI does, without modifying files.
 
+## Sharing Rules
+
+Rules can be shared without writing code. See [Community Rules](../community-rules/index.md#sharing-a-rule) for the steps.
+
 ## Desktop
 
 - To run desktop in development use `uv run --extra desktop python -m desktop`
