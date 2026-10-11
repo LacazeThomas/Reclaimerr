@@ -70,6 +70,7 @@ nav:
       - Deletion Flow: usage/deletion-flow.md
       - Duplicates: usage/duplicates.md
       - Rules: usage/rules.md
+      - Community Rules: community-rules/index.md
       - Tasks: usage/tasks.md
       - Dashboard Widgets: usage/dashboard-widgets.md
   - Deployment:
@@ -86,5 +87,7 @@ nav:
       - Changelog: reference/changelog.md
       - External API: reference/api.md
       - Internal UI API: reference/internal-api.md
+      - Rule Format: reference/rule-format.md
+      - Rule Fields: reference/rule-fields.md
       - FAQ: reference/faq.md
       - Troubleshooting: reference/troubleshooting.md

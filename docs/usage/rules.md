@@ -163,7 +163,7 @@ Provider-specific media-server genres also fail closed when their provider is no
 
 ## Field Reference
 
-The rule editor only displays fields valid for the selected scope. The following fields have behavior or units that are important when constructing a rule.
+The rule editor only displays fields valid for the selected scope. The following fields have behavior or units that are important when constructing a rule. [Rule Fields](../reference/rule-fields.md) lists every field with its JSON key, operators, and scopes.
 
 ### General Media Fields
 
@@ -542,6 +542,12 @@ If no applicable source is configured, a native snapshot refresh fails, an impor
 
 Immediately before automatic deletion, eligible candidates whose matched rules use playback fields are checked again against freshly refreshed data. An item that was watched after becoming a candidate, or whose playback state cannot be observed safely, is not authorized for deletion by that playback rule.
 
+## Import and Export
+
+**Export** on the Rules page saves rules as a JSON file, and **Import** loads one. The file format is documented on [Rule Format](../reference/rule-format.md), and every field key is listed on [Rule Fields](../reference/rule-fields.md). Those two pages are enough for an AI assistant to draft rules you can import.
+
+Rules other users have shared are on [Community Rules](../community-rules/index.md).
+
 ## Validation and Editing
 
 - Operator choices are limited to operators supported by the selected field.
@@ -567,3 +573,6 @@ Immediately before automatic deletion, eligible candidates whose matched rules u
 - [Tasks](tasks.md)
 - [External API](../reference/api.md)
 - [Internal UI API](../reference/internal-api.md)
+- [Rule Format](../reference/rule-format.md)
+- [Rule Fields](../reference/rule-fields.md)
+- [Community Rules](../community-rules/index.md)

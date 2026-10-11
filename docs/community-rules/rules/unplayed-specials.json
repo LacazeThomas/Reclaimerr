@@ -1,0 +1,41 @@
+[
+  {
+    "name": "Unplayed specials",
+    "description": "Season 0 (specials) with no recorded playback, added more than 180 days ago. Specials are often large bonus material that nobody opens.",
+    "media_type": "series",
+    "enabled": false,
+    "target_scope": "season",
+    "definition": {
+      "version": 1,
+      "root": {
+        "type": "group",
+        "op": "and",
+        "children": [
+          {
+            "type": "condition",
+            "field": "season.season_number",
+            "operator": "equals",
+            "value": 0
+          },
+          {
+            "type": "condition",
+            "field": "playback.has_activity",
+            "operator": "is_false"
+          },
+          {
+            "type": "condition",
+            "field": "media.days_since_added",
+            "operator": "greater_than",
+            "value": 180
+          }
+        ]
+      }
+    },
+    "action": {
+      "outcome": "candidate",
+      "arr_action": "unmonitor",
+      "tag_enabled": false,
+      "auto_delete_enabled": false
+    }
+  }
+]
