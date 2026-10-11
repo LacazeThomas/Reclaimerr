@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - Candidate action buttons now show tooltips for movies and series that name what each button acts on, for example **Protect version**, **Delete season**, or **Move episode to destination**.
+- The separate **Library Scope** section of the rule editor is gone. Libraries are now set with a **Library** condition in the rule tree, which has a searchable picker that shows library names instead of raw library IDs. IDs are still what gets saved, and existing rules keep their libraries; they now appear as the first condition. A library ID the main server no longer has is listed as **Unknown library**, so it can be spotted and removed. A path condition that no longer matches anything in the chosen libraries is reported when you save, instead of being pruned when the scope changes.
 - Bumped a few dependencies.
 
 ### Fixed
