@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.6] - 2026-10-11
 
 ### Added
 
@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Notifications are branded as Reclaimerr instead of Apprise. Discord embeds no longer show an "Apprise" author line, and email sent without a from name now comes from "Reclaimerr".
 - Bumped a few dependencies.
 - Update platformdirs.
+- Frontend has had packages updated that could have security vulnerabilities.
 
 ### Fixed
 
