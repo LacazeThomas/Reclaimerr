@@ -17,12 +17,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Leaving Soon collections on the Plex Home screen.** New **Visible on (Plex)** checkboxes under **Settings → General → Leaving Soon Collections**: **Library Recommended** and **Home** (your Home and shared users' Home). Reclaimerr rebuilds these collections on every sync, which used to reset a "Visible on" choice made in Plex. The choice is now re-applied after each rebuild and takes effect on the next sync. Both are off by default, which leaves Plex alone. Jellyfin and Emby have no equivalent and are unaffected.
 - **Rule file format docs.** New **Rule Format** and **Rule Fields** reference pages document the JSON that **Rules → Export** writes and **Import** reads. They cover every field key, operator, scope, and action setting, with examples. Give both pages to an AI assistant and it can draft rules you can import. Rule Fields is generated from the rule engine, so it stays current.
 - **Community Rules.** A new docs page collects rules shared by users, each as a file you can import directly. To share one, add your exported rule in a pull request. Tests check that every shared rule imports cleanly, starts disabled, and contains no IDs or usernames from your own install.
+- **Add Discord** button under **Settings → Notifications**. It fills in a Discord URL that sends rich embeds with the Reclaimerr name and logo. Replace `WEBHOOK_ID/WEBHOOK_TOKEN` with the last two parts of your Discord webhook URL.
 - Candidate groups with only one flagged item now show **Protect** and **Delete** (and **Move**, when enabled) on the main row, so the group no longer has to be expanded first. This covers a movie with one flagged version and a series with one flagged season or episode. These buttons act on that one item only. Groups with several flagged items still use the buttons on each item.
 
 ### Changed
 
 - Candidate action buttons now show tooltips for movies and series that name what each button acts on, for example **Protect version**, **Delete season**, or **Move episode to destination**.
 - The separate **Library Scope** section of the rule editor is gone. Libraries are now set with a **Library** condition in the rule tree, which has a searchable picker that shows library names instead of raw library IDs. IDs are still what gets saved, and existing rules keep their libraries; they now appear as the first condition. A library ID the main server no longer has is listed as **Unknown library**, so it can be spotted and removed. A path condition that no longer matches anything in the chosen libraries is reported when you save, instead of being pruned when the scope changes.
+- Notifications are branded as Reclaimerr instead of Apprise. Discord embeds no longer show an "Apprise" author line, and email sent without a from name now comes from "Reclaimerr".
 - Bumped a few dependencies.
 
 ### Fixed

@@ -59,6 +59,17 @@ _MAX_ERROR_CHARS = 1500
 _MAX_TITLE_SUBJECT_CHARS = 80
 _MAX_REASON_TOKENS = 3
 
+# Without an asset Apprise brands every message as itself: Discord embeds carry
+# an "Apprise" author line and email falls back to "Apprise" as the from name.
+# The severity icon mask is left alone so transports keep their per-type icons.
+_LOGO_URL = "https://raw.githubusercontent.com/jessielw/Reclaimerr/refs/heads/main/public/logo.png"
+_APPRISE_ASSET = apprise.AppriseAsset(
+    app_id="Reclaimerr",
+    app_desc="Reclaimerr",
+    app_url="https://github.com/jessielw/Reclaimerr",
+    image_url_logo=_LOGO_URL,
+)
+
 # Apprise maps the notify type onto each transport's own severity styling,
 # which is what colours a Discord embed or picks an ntfy/Gotify priority.
 _NOTIFY_TYPES: dict[NotificationType, apprise.NotifyType] = {
@@ -686,7 +697,7 @@ async def send_notification(
     logged verbatim; callers pass a label and everything else falls back to the
     URL, which is what the user typed in themselves.
     """
-    ap = apprise.Apprise()
+    ap = apprise.Apprise(asset=_APPRISE_ASSET)
     ap.add(url)
     label = log_label or url
 

@@ -6,6 +6,7 @@
   import type { NotificationEmailStatus } from "$lib/types/shared";
   import SmtpSettings from "./notifications/smtp-settings.svelte";
   import Mail from "@lucide/svelte/icons/mail";
+  import MessageSquare from "@lucide/svelte/icons/message-square";
   import { Button } from "$lib/components/ui/button/index.js";
   import { Switch } from "$lib/components/ui/switch/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
@@ -280,9 +281,16 @@
     }
   }
 
+  // markdown is what makes apprise send a discord embed instead of plain text
+  const DISCORD_WEBHOOK_PLACEHOLDER = "WEBHOOK_ID/WEBHOOK_TOKEN";
+  const DISCORD_PRESET_URL =
+    `discord://Reclaimerr@${DISCORD_WEBHOOK_PLACEHOLDER}?format=markdown` +
+    "&avatar_url=https://raw.githubusercontent.com/jessielw/Reclaimerr/refs/heads/main/public/logo.png";
+
   // add new notification with default values
   function addNotification(
     channel: NotificationChannel = NotificationChannel.Apprise,
+    preset: { name: string; url: string } | null = null,
   ) {
     const newId = Date.now() * -1; // generate a unique negative ID for new notifications
     notifications = [
@@ -290,9 +298,11 @@
       {
         id: newId,
         enabled: true,
-        name: channel === NotificationChannel.SystemEmail ? "Email" : "",
+        name:
+          preset?.name ??
+          (channel === NotificationChannel.SystemEmail ? "Email" : ""),
         channel,
-        url: "",
+        url: preset?.url ?? "",
         targetEmail: "",
         newCleanupCandidates: false,
         requestApproved: false,
@@ -575,6 +585,18 @@
           Add Email
         </Button>
       {/if}
+      <Button
+        variant="outline"
+        onclick={() =>
+          addNotification(NotificationChannel.Apprise, {
+            name: "Discord",
+            url: DISCORD_PRESET_URL,
+          })}
+        class="cursor-pointer gap-2"
+      >
+        <MessageSquare />
+        Add Discord
+      </Button>
       <Button onclick={() => addNotification()} class="cursor-pointer gap-2">
         <Plus />
         Add Notification Service
@@ -848,6 +870,16 @@
                       class="input-hover-el font-mono text-sm"
                       rows={3}
                     ></Textarea>
+                    {#if notification.url.includes(DISCORD_WEBHOOK_PLACEHOLDER)}
+                      <p
+                        class="mt-1 text-xs text-amber-600 dark:text-amber-400"
+                      >
+                        Replace <code>WEBHOOK_ID/WEBHOOK_TOKEN</code> with the
+                        last two parts of your Discord webhook URL (<code
+                          >https://discord.com/api/webhooks/ID/TOKEN</code
+                        >).
+                      </p>
+                    {/if}
                     <p class="mt-1 text-xs text-muted-foreground">
                       Enter your Apprise-compatible notification URL. See <a
                         href="https://appriseit.com/getting-started/universal-syntax/"
