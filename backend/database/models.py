@@ -424,6 +424,11 @@ class GeneralSettings(Base):
     leaving_soon_collection_sort: Mapped[str] = mapped_column(
         String(32), default=LeavingSoonCollectionSort.DEFAULT.value
     )
+    # Plex "Visible on" hub promotion, re-applied on every rebuild; Plex only.
+    leaving_soon_visible_on_recommended: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+    leaving_soon_visible_on_home: Mapped[bool] = mapped_column(Boolean, default=False)
     # custom collection artwork; filenames under settings.collection_posters_dir,
     # not paths. Written only by the poster/thumb upload/delete endpoints - the
     # general settings PUT deliberately leaves them alone.

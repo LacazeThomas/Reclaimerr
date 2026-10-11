@@ -50,7 +50,7 @@ from backend.services.playback_guard import (
     guard_native_removal,
     playback_step_completed,
 )
-from backend.utils.helpers import order_leaving_soon_item_ids
+from backend.utils.helpers import LeavingSoonVisibility, order_leaving_soon_item_ids
 
 # history tuple (total_view_count, max_last_viewed_at, distinct_user_count)
 _HistEntry = tuple[int, datetime | None, int]
@@ -303,6 +303,7 @@ class PlexService:
         series_poster: bytes | None = None,
         movie_thumb: bytes | None = None,
         series_thumb: bytes | None = None,
+        collection_visibility: LeavingSoonVisibility = LeavingSoonVisibility(),
     ) -> None:
         """Sync managed Leaving Soon collections for movies and series.
 
@@ -311,7 +312,7 @@ class PlexService:
         only read for the `leaving_soonest` sort. The posters, when given, are
         re-applied to every collection this sync creates - Plex rebuilds these
         collections from scratch each run, so artwork does not survive on its
-        own.
+        own. `collection_visibility` is re-applied the same way.
 
         The thumbs are accepted and ignored: a Plex collection's thumb is its
         poster, so there is no separate landscape image to set.
@@ -325,6 +326,7 @@ class PlexService:
                 collection_sort=collection_sort,
                 item_deadlines=item_deadlines,
                 poster=movie_poster,
+                visibility=collection_visibility,
             )
         if series_title := str(series_title or "").strip():
             await self._sync_leaving_soon_collection_for_type(
@@ -334,6 +336,7 @@ class PlexService:
                 collection_sort=collection_sort,
                 item_deadlines=item_deadlines,
                 poster=series_poster,
+                visibility=collection_visibility,
             )
 
     async def delete_leaving_soon_collections(
@@ -362,6 +365,7 @@ class PlexService:
         ),
         movie_poster: bytes | None = None,
         series_poster: bytes | None = None,
+        collection_visibility: LeavingSoonVisibility = LeavingSoonVisibility(),
     ) -> None:
         """Remove items from managed collections before destructive media actions."""
         if movie_title := str(movie_title or "").strip():
@@ -371,6 +375,7 @@ class PlexService:
                 item_ids=movie_item_ids,
                 collection_sort=collection_sort,
                 poster=movie_poster,
+                visibility=collection_visibility,
             )
         if series_title := str(series_title or "").strip():
             await self._prune_leaving_soon_collection_for_type(
@@ -379,6 +384,7 @@ class PlexService:
                 item_ids=series_item_ids,
                 collection_sort=collection_sort,
                 poster=series_poster,
+                visibility=collection_visibility,
             )
 
     async def _prune_leaving_soon_collection_for_type(
@@ -391,6 +397,7 @@ class PlexService:
             LeavingSoonCollectionSort.DEFAULT
         ),
         poster: bytes | None = None,
+        visibility: LeavingSoonVisibility = LeavingSoonVisibility(),
     ) -> None:
         normalized_item_ids = {
             str(item_id).strip() for item_id in item_ids if str(item_id).strip()
@@ -435,12 +442,18 @@ class PlexService:
                         collection_title=collection_title,
                         poster=poster,
                     )
-                    await self._apply_collection_sort(
+                    new_collection_id = await self._apply_collection_sort(
                         collection_id=new_collection_id,
                         section_id=section_id,
                         collection_title=collection_title,
                         collection_sort=collection_sort,
                         ordered_item_ids=remaining_item_ids,
+                    )
+                    await self._apply_collection_visibility(
+                        collection_id=new_collection_id,
+                        section_id=section_id,
+                        collection_title=collection_title,
+                        visibility=visibility,
                     )
 
     async def _sync_leaving_soon_collection_for_type(
@@ -454,6 +467,7 @@ class PlexService:
         ),
         item_deadlines: Mapping[str, datetime] | None = None,
         poster: bytes | None = None,
+        visibility: LeavingSoonVisibility = LeavingSoonVisibility(),
     ) -> None:
         section_ids = await self._get_section_ids_by_type(section_type)
         if not section_ids:
@@ -502,12 +516,18 @@ class PlexService:
                 collection_title=collection_title,
                 poster=poster,
             )
-            await self._apply_collection_sort(
+            new_collection_id = await self._apply_collection_sort(
                 collection_id=new_collection_id,
                 section_id=section_id,
                 collection_title=collection_title,
                 collection_sort=collection_sort,
                 ordered_item_ids=ordered_item_ids,
+            )
+            await self._apply_collection_visibility(
+                collection_id=new_collection_id,
+                section_id=section_id,
+                collection_title=collection_title,
+                visibility=visibility,
             )
 
     async def _get_section_ids_by_type(self, section_type: str) -> list[str]:
@@ -733,12 +753,13 @@ class PlexService:
         collection_title: str,
         collection_sort: LeavingSoonCollectionSort,
         ordered_item_ids: Sequence[str],
-    ) -> None:
+    ) -> str | None:
         """Push the configured ordering onto a freshly built collection.
 
         Returns before doing any work on the default sort, so an install that
         never opted in pays nothing - not even the lookup that recovers the new
-        collection's rating key when Plex answers the create without one.
+        collection's rating key when Plex answers the create without one. The
+        id, resolved or not, is handed back for the visibility pass.
 
         Best-effort otherwise: a server that rejects the preference or a move
         must not fail the sync, or the caller would stop recording the titles
@@ -746,7 +767,7 @@ class PlexService:
         """
         pref_value = _PLEX_COLLECTION_SORT_PREFS.get(collection_sort)
         if pref_value is None:
-            return
+            return collection_id
         collection_id = await self._resolve_collection_id(
             collection_id=collection_id,
             section_id=section_id,
@@ -757,7 +778,7 @@ class PlexService:
                 "Could not resolve the new Plex collection "
                 f"{collection_title!r}; leaving its sort order unset"
             )
-            return
+            return None
         try:
             response = await self.session.put(
                 f"{self.plex_url}/library/metadata/{collection_id}/prefs",
@@ -767,16 +788,63 @@ class PlexService:
             response.raise_for_status()
         except Exception as e:
             LOG.warning(f"Failed setting Plex collection sort on {collection_id}: {e}")
-            return
+            return collection_id
 
         if collection_sort is not LeavingSoonCollectionSort.LEAVING_SOONEST:
             # alphabetical is computed by Plex itself; only a custom order
             # needs the item positions pushed
-            return
+            return collection_id
         await self._reorder_collection_items(
             collection_id=collection_id,
             ordered_item_ids=ordered_item_ids,
         )
+        return collection_id
+
+    async def _apply_collection_visibility(
+        self,
+        *,
+        collection_id: str | None,
+        section_id: str,
+        collection_title: str,
+        visibility: LeavingSoonVisibility,
+    ) -> None:
+        """Promote a freshly built collection to the configured hubs.
+
+        Plex keys "Visible on" to the collection's rating key, so the rebuild
+        each sync drops it; this puts it back. All-off returns before doing any
+        work, leaving the server alone for installs that never opted in.
+
+        Best-effort otherwise, for the same reason as the sort pass.
+        """
+        if not visibility:
+            return
+        collection_id = await self._resolve_collection_id(
+            collection_id=collection_id,
+            section_id=section_id,
+            collection_title=collection_title,
+        )
+        if collection_id is None:
+            LOG.warning(
+                "Could not resolve the new Plex collection "
+                f"{collection_title!r}; leaving its visibility unset"
+            )
+            return
+        try:
+            response = await self.session.post(
+                f"{self.plex_url}/hubs/sections/{section_id}/manage",
+                params={
+                    "metadataItemId": collection_id,
+                    "promotedToRecommended": str(int(visibility.recommended)),
+                    "promotedToOwnHome": str(int(visibility.home)),
+                    "promotedToSharedHome": str(int(visibility.home)),
+                },
+                timeout=60,
+            )
+            response.raise_for_status()
+        except Exception as e:
+            LOG.warning(
+                f"Failed setting Plex collection visibility on {collection_id}: {e}"
+            )
 
     async def _reorder_collection_items(
         self, *, collection_id: str, ordered_item_ids: Sequence[str]

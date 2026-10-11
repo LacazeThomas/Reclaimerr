@@ -182,6 +182,7 @@ from backend.utils.helpers import (
     LeavingSoonPosters,
     LeavingSoonThumbs,
     LeavingSoonTitles,
+    LeavingSoonVisibility,
     normalize_leaving_soon_collection_sort,
     normalize_leaving_soon_movie_title,
     normalize_leaving_soon_series_title,
@@ -4657,6 +4658,7 @@ async def _load_leaving_soon_collection_settings(
     LeavingSoonCollectionSort,
     LeavingSoonPosters,
     LeavingSoonThumbs,
+    LeavingSoonVisibility,
 ]:
     settings_row = (await db.execute(select(GeneralSettings))).scalars().first()
     default_titles = LeavingSoonTitles(
@@ -4672,6 +4674,7 @@ async def _load_leaving_soon_collection_settings(
             LeavingSoonCollectionSort.DEFAULT,
             LeavingSoonPosters(),
             LeavingSoonThumbs(),
+            LeavingSoonVisibility(),
         )
     collection_titles = LeavingSoonTitles(
         movies=normalize_leaving_soon_movie_title(
@@ -4694,6 +4697,10 @@ async def _load_leaving_soon_collection_settings(
         ),
         load_leaving_soon_posters(settings_row),
         load_leaving_soon_thumbs(settings_row),
+        LeavingSoonVisibility(
+            recommended=bool(settings_row.leaving_soon_visible_on_recommended),
+            home=bool(settings_row.leaving_soon_visible_on_home),
+        ),
     )
 
 
@@ -5088,6 +5095,7 @@ async def _sync_leaving_soon_collections(db: AsyncSession) -> None:
         collection_sort,
         collection_posters,
         collection_thumbs,
+        collection_visibility,
     ) = await _load_leaving_soon_collection_settings(db)
     if not enabled:
         await _cleanup_disabled_leaving_soon_collections(
@@ -5179,6 +5187,7 @@ async def _sync_leaving_soon_collections(db: AsyncSession) -> None:
                 series_poster=collection_posters.series,
                 movie_thumb=collection_thumbs.movies,
                 series_thumb=collection_thumbs.series,
+                collection_visibility=collection_visibility,
             )
         except Exception as e:
             service_success = False
@@ -5225,6 +5234,7 @@ async def push_leaving_soon_posters(db: AsyncSession) -> None:
         _collection_sort,
         collection_posters,
         _collection_thumbs,
+        _collection_visibility,
     ) = await _load_leaving_soon_collection_settings(db)
     if settings_row is None or not enabled or not collection_posters:
         return
@@ -5271,6 +5281,7 @@ async def push_leaving_soon_thumbs(db: AsyncSession) -> None:
         _collection_sort,
         _collection_posters,
         collection_thumbs,
+        _collection_visibility,
     ) = await _load_leaving_soon_collection_settings(db)
     if settings_row is None or not enabled or not collection_thumbs:
         return
@@ -5449,6 +5460,7 @@ async def _prune_leaving_soon_before_candidate_actions(
             collection_sort,
             collection_posters,
             _collection_thumbs,
+            collection_visibility,
         ) = await _load_leaving_soon_collection_settings(db)
         if not enabled:
             return
@@ -5507,6 +5519,7 @@ async def _prune_leaving_soon_before_candidate_actions(
                     collection_sort=collection_sort,
                     movie_poster=collection_posters.movies,
                     series_poster=collection_posters.series,
+                    collection_visibility=collection_visibility,
                 )
             except Exception as e:
                 raise RuntimeError(

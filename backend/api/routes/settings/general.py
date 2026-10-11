@@ -227,6 +227,10 @@ async def update_general_settings(
     settings.leaving_soon_movie_collection_title = current_leaving_soon_movie_title
     settings.leaving_soon_series_collection_title = current_leaving_soon_series_title
     settings.leaving_soon_collection_sort = request.leaving_soon_collection_sort.value
+    settings.leaving_soon_visible_on_recommended = (
+        request.leaving_soon_visible_on_recommended
+    )
+    settings.leaving_soon_visible_on_home = request.leaving_soon_visible_on_home
     # leaving_soon_*_poster_path and leaving_soon_*_thumb_path are deliberately
     # not copied from the request: the upload and delete endpoints own those
     # columns. A client that loaded this settings body before an upload would

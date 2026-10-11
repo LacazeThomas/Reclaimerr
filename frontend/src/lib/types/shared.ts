@@ -336,6 +336,9 @@ export interface GeneralSettings {
   leaving_soon_movie_collection_title: string;
   leaving_soon_series_collection_title: string;
   leaving_soon_collection_sort: LeavingSoonCollectionSort;
+  // Plex "Visible on" hubs; home covers both own and shared users' Home
+  leaving_soon_visible_on_recommended: boolean;
+  leaving_soon_visible_on_home: boolean;
   // filenames served from /static/collection-posters; managed by the poster
   // and thumb upload and delete endpoints, never sent back on the settings PUT.
   leaving_soon_movie_poster_path: string | null;

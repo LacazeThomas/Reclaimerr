@@ -407,6 +407,8 @@ class GeneralSettingsResponse(BaseModel):
     leaving_soon_collection_sort: LeavingSoonCollectionSort = (
         LeavingSoonCollectionSort.DEFAULT
     )
+    leaving_soon_visible_on_recommended: bool = False
+    leaving_soon_visible_on_home: bool = False
     # read-only here: stored filenames served from /static/collection-posters.
     # The poster/thumb upload and delete endpoints own these; the general
     # settings PUT ignores whatever a client sends so a stale body cannot clear
