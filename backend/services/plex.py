@@ -216,6 +216,43 @@ class PlexService:
         except (OSError, OverflowError, ValueError):
             return None
 
+    async def get_series_episode_order(
+        self, item_id: str, *, library_orders: dict[str, str | None] | None = None
+    ) -> str | None:
+        """Read a show's override, resolving an inherited library preference."""
+        from backend.services.episode_ordering import normalize_episode_order
+
+        data, _ = await self._make_request(f"library/metadata/{item_id}", timeout=10)
+        if not isinstance(data, dict):
+            return None
+        items = data.get("MediaContainer", {}).get("Metadata", [])
+        if len(items) != 1:
+            return None
+        item = items[0]
+        override = item.get("showOrdering")
+        if override:
+            return normalize_episode_order(override)
+        section_id = item.get("librarySectionID")
+        if not section_id:
+            return None
+        section_key = str(section_id)
+        if library_orders is not None and section_key in library_orders:
+            return library_orders[section_key]
+        prefs, _ = await self._make_request(
+            f"library/sections/{section_id}/prefs", timeout=10
+        )
+        if not isinstance(prefs, dict):
+            return None
+        for setting in prefs.get("MediaContainer", {}).get("Setting", []):
+            if setting.get("id") == "showOrdering":
+                order = normalize_episode_order(setting.get("value"))
+                if library_orders is not None:
+                    library_orders[section_key] = order
+                return order
+        if library_orders is not None:
+            library_orders[section_key] = None
+        return None
+
     async def get_live_sessions(self) -> PlaybackSnapshot:
         """Fetch live playback under the guard's total 10-second timeout."""
         response = await self.session.get(

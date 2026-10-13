@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Sonarr v5 beta episode-order safeguards.** Reclaimerr continues using `/api/v3` for Sonarr v3, v4, and v5 beta. Matching aired/official, DVD, and absolute orders are supported. Cleanup that relies on episode numbering is blocked when Sonarr and the media server use different orders, or the order cannot be verified. Checks honor the rule's selected Sonarr instances and Plex library defaults. Unsupported streaming-order identifiers remain blocked.
+
+### Fixed
+
+- Incompatible Sonarr episode inventories, import dates, and linked-server watch data are no longer merged by season/episode number. Sync clears stale Sonarr inventory and import dates when ordering is incompatible, while retaining series references and tags.
+- Sonarr season-monitoring updates no longer mutate the fetched series data while preparing requests, preserving episode ordering, language, and unrelated settings.
+
 ## [0.5.6] - 2026-10-11
 
 ### Added
