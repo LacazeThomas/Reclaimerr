@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Plex partial scans after deletion now find the correct library using its configured locations, so removed media can disappear from Plex without waiting for a scheduled scan. Path matching also distinguishes sibling folders such as `/data/tv` and `/data/tv2` (#431).
 - Incompatible Sonarr episode inventories, import dates, and linked-server watch data are no longer merged by season/episode number. Sync clears stale Sonarr inventory and import dates when ordering is incompatible, while retaining series references and tags.
 - Sonarr season-monitoring updates no longer mutate the fetched series data while preparing requests, preserving episode ordering, language, and unrelated settings.
+- Enable automatic S256 PKCE for OIDC (thanks @voc0der). 
 
 ## [0.5.6] - 2026-10-11
 
