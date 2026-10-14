@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Bulk user import from CSV.** New **Import CSV** button under **Settings → Users**, with a downloadable template, validation preview, and bulk account creation. Matches existing accounts by email first, then username, ignoring case; existing accounts are skipped and conflicts block import. New users receive default page access and the Request permission. Passwords are optional for external sign-in; supplied passwords must be changed at first local login.
+
 - **Custom login backgrounds.** Administrators can choose default backdrops, upload a static image, or replace the rotation with up to 50 direct image URLs under **Settings → General → Login background**. Includes previews, a 5–300 second rotation interval, image replacement and removal, and fallback when custom images cannot load.
 - **Separate playback-status protection.** New **Defer When Playback Status Is Unavailable** toggle beneath **Protect Active Playback** in **Settings → General**. Turn it off to allow deletions and moves when live-session status cannot be verified, while still protecting known playing or paused media. Both toggles default to on, preserving existing behavior.
 - **Login method controls.** Administrators can allow or disable Local, Media, and SSO under **Settings → Authentication**, with **Restore defaults** and validation that keeps at least one configured method enabled. Disabled methods reject new sign-ins through the API, and the last allowed provider cannot be disabled or removed. Set `AUTH_FORCE_LOCAL_LOGIN=true` outside the app and restart to recover local password access; a notice reminds admins to remove the override after fixing settings.

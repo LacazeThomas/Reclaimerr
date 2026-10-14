@@ -75,6 +75,39 @@ If an external provider fails or your admin identity cannot sign in:
 
 A trusted proxy that rejects requests before they reach Reclaimerr still needs its own recovery path. For an unrecognized proxy username, see `FORWARD_AUTH_ALLOW_LOCAL_FALLBACK` below; `AUTH_FORCE_LOCAL_LOGIN` does not bypass proxy identity checks.
 
+## Import Users from CSV
+
+Users with **Manage users** permission can bulk-create accounts under **Settings → Users → Import CSV**.
+
+1. Choose **Download CSV Template**.
+2. Add one user per row, keeping the four columns in this exact order.
+3. Upload the file and choose **Preview CSV**.
+4. Correct any errors, upload the corrected file, and preview again.
+5. Choose **Import Users** to create the accounts marked ready.
+
+```csv
+username,email,display_name,password
+jane_doe,jane@example.com,Jane Doe,
+localuser,local@example.com,Local User,temporary-password
+```
+
+| Column | Rules |
+| --- | --- |
+| `username` | Required; 5–32 letters, numbers, underscores, or hyphens. |
+| `email` | Valid email address; required if password is blank. |
+| `display_name` | Optional; 3–32 characters when supplied. Defaults to username. |
+| `password` | Optional; 3–64 characters when supplied. Users must change it at first local login. |
+
+Use UTF-8, comma-separated CSV, up to 1 MB and 1,000 users. Blank rows are ignored. Surround values containing commas with double quotes. Leading and trailing whitespace in values is trimmed.
+
+New accounts have the **User** role, **Request** permission, and configured default page access. Roles and permissions cannot be supplied in this CSV.
+
+Matching uses email first, ignoring case, then username. Existing accounts are skipped without changing their password, profile, or access. Duplicate usernames or emails within the CSV, ambiguous existing matches, and usernames belonging to a different email are errors. Any error blocks the entire import. The server checks matches again when importing.
+
+A blank password creates an account without local password sign-in. The user must sign in through an enabled external method that matches that account, or an administrator must set a local password later. Media sign-in retains its existing email/username matching and identity linking behavior; CSV import itself does not verify or link external identities.
+
+Passwords are hashed on import and omitted from preview responses. If you supply temporary passwords, the CSV contains them in plain text; distribute them securely and remove the file when finished.
+
 ## Trusted Proxy Authentication
 
 Reclaimerr can trust a username asserted by Authelia or another forward-auth reverse proxy instead of requiring a local sign-in. This is disabled by default, and it never creates accounts or grants roles: it only maps an asserted username onto an existing, active Reclaimerr user. When Local login is allowed in Authentication settings (or AUTH_FORCE_LOCAL_LOGIN recovery is enabled), local sign-in works for requests where the trusted proxy does not assert an identity.

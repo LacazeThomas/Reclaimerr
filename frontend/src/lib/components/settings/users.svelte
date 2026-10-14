@@ -3,6 +3,7 @@
   import type { Component } from "svelte";
   import { auth } from "$lib/stores/auth";
   import { get_api, post_api, delete_api } from "$lib/api";
+  import UserImportDialog from "./user-import-dialog.svelte";
   import ErrorBox from "$lib/components/error-box.svelte";
   import {
     type MediaIdentityItem,
@@ -67,6 +68,7 @@
 
   let loading: boolean = $state(true);
   let profileError: string = $state("");
+  let showImportModal = $state(false);
   let showCreateModal: boolean = $state(false);
   let showEditModal: boolean = $state(false);
   let editingUser: User | null = $state(null);
@@ -445,11 +447,19 @@
     </p>
   </div>
   {#if !profileError && canManageUsers}
-    <Button
-      type="button"
-      class="hover cursor-pointer"
-      onclick={() => (showCreateModal = true)}><UserPlus /> Add User</Button
-    >
+    <div class="flex flex-wrap gap-2">
+      <Button
+        type="button"
+        variant="secondary"
+        class="cursor-pointer"
+        onclick={() => (showImportModal = true)}>Import CSV</Button
+      >
+      <Button
+        type="button"
+        class="hover cursor-pointer"
+        onclick={() => (showCreateModal = true)}><UserPlus /> Add User</Button
+      >
+    </div>
   {/if}
 </div>
 
@@ -1193,3 +1203,12 @@
     </AlertDialog.Footer>
   </AlertDialog.Content>
 </AlertDialog.Root>
+
+{#if showImportModal && canManageUsers}
+  <UserImportDialog
+    bind:open={showImportModal}
+    onImported={async () => {
+      await Promise.all([loadUsers(), loadMediaIdentities()]);
+    }}
+  />
+{/if}
