@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
 import json
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 import pytest
 from fastapi import HTTPException
@@ -14,7 +18,12 @@ from starlette.requests import Request
 import backend.api.routes.auth as auth_routes
 from backend.api.routes.settings.oidc import update_oidc_settings
 from backend.core.encryption import fer_encrypt
-from backend.core.oidc import OIDCProviderMetadata, extract_userinfo
+from backend.core.oidc import (
+    OIDCProviderMetadata,
+    TokenEndpointAuthMethod,
+    create_oidc_client,
+    extract_userinfo,
+)
 from backend.database import Base
 from backend.database.models import (
     GeneralSettings,
@@ -134,6 +143,59 @@ def _new_user(*, username: str, email: str | None, role: UserRole) -> User:
         role=role,
         permissions=[],
     )
+
+
+@pytest.mark.parametrize(
+    "token_endpoint_auth_method", ["client_secret_basic", "client_secret_post"]
+)
+def test_oidc_client_uses_pkce(
+    monkeypatch, token_endpoint_auth_method: TokenEndpointAuthMethod
+) -> None:
+    async def run() -> None:
+        client = create_oidc_client(
+            issuer_url="https://auth.example.com",
+            client_id="reclaimerr",
+            client_secret="secret",
+            scopes="openid profile email",
+            token_endpoint_auth_method=token_endpoint_auth_method,
+        )
+        monkeypatch.setattr(
+            client,
+            "load_server_metadata",
+            AsyncMock(
+                return_value={
+                    "authorization_endpoint": "https://auth.example.com/authorize",
+                }
+            ),
+        )
+        request = _make_oidc_start_request()
+        request.scope["session"] = {}
+        response = await client.authorize_redirect(
+            request, "http://testserver/api/auth/oidc/callback"
+        )
+        params = parse_qs(urlsplit(response.headers["location"]).query)
+        assert params["code_challenge_method"] == ["S256"]
+        assert "code_verifier" not in params
+
+        fetch_access_token = AsyncMock(return_value={"access_token": "test-token"})
+        monkeypatch.setattr(client, "fetch_access_token", fetch_access_token)
+        callback_request = _make_callback_request()
+        callback_request.scope["session"] = request.session
+        callback_request.scope["query_string"] = urlencode(
+            {"code": "test-code", "state": params["state"][0]}
+        ).encode()
+        await client.authorize_access_token(callback_request)
+
+        fetch_access_token.assert_awaited_once()
+        verifier = fetch_access_token.call_args.kwargs["code_verifier"]
+        challenge = (
+            base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
+            .rstrip(b"=")
+            .decode()
+        )
+        assert params["code_challenge"] == [challenge]
+
+    asyncio.run(run())
 
 
 def test_update_oidc_settings_requires_secret_when_enabling() -> None:
