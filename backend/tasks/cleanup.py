@@ -4744,6 +4744,9 @@ async def _load_leaving_soon_collection_settings(
         LeavingSoonVisibility(
             recommended=bool(settings_row.leaving_soon_visible_on_recommended),
             home=bool(settings_row.leaving_soon_visible_on_home),
+            emby_home=bool(
+                getattr(settings_row, "leaving_soon_emby_home_enabled", False)
+            ),
         ),
     )
 

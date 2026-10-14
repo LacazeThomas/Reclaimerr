@@ -254,6 +254,26 @@ class ServiceConfig(Base):
     )
 
 
+class EmbyHomeSection(Base):
+    """Emby-assigned IDs for home rows owned by Reclaimerr."""
+
+    __tablename__ = "emby_home_sections"
+    __table_args__ = (
+        UniqueConstraint(
+            "service_config_id", "user_id", "kind", name="uq_emby_home_user_kind"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
+    service_config_id: Mapped[int] = mapped_column(
+        ForeignKey("service_configs.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(16))
+    section_id: Mapped[str] = mapped_column(String(128))
+    collection_id: Mapped[str] = mapped_column(String(64))
+
+
 class ServiceMediaLibrary(Base):
     """Media libraries available from the main media server.
 
@@ -429,6 +449,7 @@ class GeneralSettings(Base):
         Boolean, default=False
     )
     leaving_soon_visible_on_home: Mapped[bool] = mapped_column(Boolean, default=False)
+    leaving_soon_emby_home_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     # custom collection artwork; filenames under settings.collection_posters_dir,
     # not paths. Written only by the poster/thumb upload/delete endpoints - the
     # general settings PUT deliberately leaves them alone.

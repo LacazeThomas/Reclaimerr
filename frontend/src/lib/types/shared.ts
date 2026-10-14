@@ -339,6 +339,7 @@ export interface GeneralSettings {
   // Plex "Visible on" hubs; home covers both own and shared users' Home
   leaving_soon_visible_on_recommended: boolean;
   leaving_soon_visible_on_home: boolean;
+  leaving_soon_emby_home_enabled: boolean;
   // filenames served from /static/collection-posters; managed by the poster
   // and thumb upload and delete endpoints, never sent back on the settings PUT.
   leaving_soon_movie_poster_path: string | null;

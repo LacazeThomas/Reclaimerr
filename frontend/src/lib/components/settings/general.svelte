@@ -95,6 +95,7 @@
   let leavingSoonCollectionSort = $state<LeavingSoonCollectionSort>("default");
   let leavingSoonVisibleOnRecommended = $state(false);
   let leavingSoonVisibleOnHome = $state(false);
+  let leavingSoonEmbyHomeEnabled = $state(false);
   // posters and thumbs are saved the moment they are picked, unlike everything
   // else on this page, so they are keyed by kind rather than folded into the
   // payload
@@ -255,6 +256,7 @@
         leaving_soon_collection_sort: leavingSoonCollectionSort,
         leaving_soon_visible_on_recommended: leavingSoonVisibleOnRecommended,
         leaving_soon_visible_on_home: leavingSoonVisibleOnHome,
+        leaving_soon_emby_home_enabled: leavingSoonEmbyHomeEnabled,
       });
       toast.success("General settings saved");
     } catch (error) {
@@ -508,6 +510,8 @@
           settings.leaving_soon_visible_on_recommended ?? false;
         leavingSoonVisibleOnHome =
           settings.leaving_soon_visible_on_home ?? false;
+        leavingSoonEmbyHomeEnabled =
+          settings.leaving_soon_emby_home_enabled ?? false;
         leavingSoonArtwork = {
           poster: {
             movies: settings.leaving_soon_movie_poster_path ?? null,
@@ -922,6 +926,26 @@
               </span>
             </Label>
           </div>
+        </div>
+
+        <div class="mt-4">
+          <span class="text-sm text-foreground font-medium"
+            >Visible on (Emby)</span
+          >
+          <Label
+            class="flex items-start gap-2 rounded-md border border-border bg-background/40 p-3 text-sm text-foreground cursor-pointer max-w-2xl mt-3"
+          >
+            <Checkbox bind:checked={leavingSoonEmbyHomeEnabled} />
+            <span>
+              <span class="font-medium">Home screen for all users</span>
+              <span class="block text-xs text-muted-foreground">
+                Show movie and series rows on every user's Home screen. Requires
+                Emby Server 4.10 or newer. Rows update after each candidate scan
+                and disappear when empty. Turning this off removes Reclaimerr's
+                rows on the next sync.
+              </span>
+            </span>
+          </Label>
         </div>
 
         <!-- custom collection posters -->

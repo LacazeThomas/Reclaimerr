@@ -853,7 +853,7 @@ class PlexService:
 
         Best-effort otherwise, for the same reason as the sort pass.
         """
-        if not visibility:
+        if not (visibility.recommended or visibility.home):
             return
         collection_id = await self._resolve_collection_id(
             collection_id=collection_id,

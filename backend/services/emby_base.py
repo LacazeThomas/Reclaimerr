@@ -270,8 +270,8 @@ class EmbyServiceBase:
         way to force one would be rewriting each item's ForcedSortName, which
         would reorder the user's whole library, not just this collection.
 
-        `collection_visibility` is accepted and ignored: it maps to Plex's
-        "Visible on" hubs, which have no per-collection BoxSet equivalent.
+        This base ignores `collection_visibility`. EmbyService separately
+        manages home sections; Jellyfin has no equivalent integration.
         """
         del collection_sort, item_deadlines, collection_visibility
         if movie_title := str(movie_title or "").strip():
