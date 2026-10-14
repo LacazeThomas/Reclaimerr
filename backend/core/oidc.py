@@ -97,6 +97,7 @@ def create_oidc_client(
         client_kwargs={
             "scope": normalize_scopes(scopes),
             "token_endpoint_auth_method": token_endpoint_auth_method,
+            "code_challenge_method": "S256",
         },
     )
     client = oauth.create_client(_CLIENT_NAME)
