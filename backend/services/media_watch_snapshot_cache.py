@@ -31,6 +31,7 @@ from backend.database.models import (
 from backend.enums import MediaType, Service
 from backend.models.media import MediaWatchSnapshot, NativePlaybackSnapshot
 from backend.services.emby import EmbyService
+from backend.services.episode_ordering import EpisodeOrderingSnapshot, ordering_error
 from backend.services.jellyfin import JellyfinService
 from backend.services.media_identity import load_media_identity_ownership
 from backend.services.plex import PlexService
@@ -959,9 +960,35 @@ class MediaWatchSnapshotCache:
                     (int(tmdb_id), int(season_number), int(episode_number)),
                 )
 
+        blocked_tmdb: set[int] = set()
+        ownership = await load_media_identity_ownership(session)
+        if (
+            ownership.main_config_id is not None
+            and ownership.main_config_id != source_service_config_id
+        ):
+            ordering = EpisodeOrderingSnapshot()
+            series_rows = (
+                await session.execute(
+                    select(Series.id, Series.tmdb_id).where(
+                        Series.tmdb_id.in_({snapshot.tmdb_id for snapshot in detailed})
+                    )
+                )
+            ).all()
+            await ordering.preload_primary(session, {row.id for row in series_rows})
+            for series_id, tmdb_id in series_rows:
+                source_order = await ordering.linked_order(
+                    session, series_id, source_service_config_id
+                )
+                main_order = await ordering.primary_order(session, series_id)
+                if ordering_error(source_order, main_order):
+                    blocked_tmdb.add(tmdb_id)
+
         merged: dict[tuple[int, int, int, str], tuple[str, datetime, int | None]] = {}
         unmatched = 0
         for snapshot in detailed:
+            if snapshot.tmdb_id in blocked_tmdb:
+                unmatched += 1
+                continue
             coordinate = cls._episode_coordinate(snapshot, coordinates)
             watched_at = cls._as_utc_datetime(snapshot.last_watched_at)
             normalized = cls._normalize_user_key(snapshot.watch_user_key)

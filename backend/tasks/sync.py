@@ -48,6 +48,7 @@ from backend.models.media import (
 )
 from backend.services.admin_notices import reconcile_stale_library_notice
 from backend.services.emby import EmbyService
+from backend.services.episode_ordering import EpisodeOrderingSnapshot, ordering_error
 from backend.services.jellyfin import JellyfinService
 from backend.services.media_favorites_cache import media_favorites_snapshot_cache
 from backend.services.media_watch_snapshot_cache import media_watch_snapshot_cache
@@ -558,6 +559,8 @@ async def _build_series_supplemental_matches(
 ) -> list[SupplementalMediaMatch]:
     """Build supplemental matches for series."""
     source_service = config.service_type
+    ordering = EpisodeOrderingSnapshot()
+    source_client = service_manager.get_media_server(source_service, config.id)
     ref_rows = (
         await session.execute(
             select(SeriesServiceRef, Series)
@@ -647,6 +650,11 @@ async def _build_series_supplemental_matches(
             signals=signals,
         )
 
+        source_order = await ordering.media_order(source_client, source_series.id)
+        main_order = await ordering.primary_order(session, local_series.id)
+        if ordering_error(source_order, main_order):
+            # Keep the show identity; its numbered children are not interchangeable.
+            continue
         for source_season in source_series.season_data:
             if not source_season.service_season_id:
                 continue
@@ -2605,6 +2613,7 @@ async def sync_series(
                 series_episode_inventory: dict[int, dict[int, set[int]]] = {}
                 inventory_fetched_series_ids: set[int] = set()
                 date_fetch_failed_series_ids: set[int] = set()
+                ordering = EpisodeOrderingSnapshot()
                 for config_id, client in sonarr_clients.items():
                     await session.execute(
                         sql_delete(SeriesArrRef).where(
@@ -2621,20 +2630,45 @@ async def sync_series(
                     ]
                     semaphore = asyncio.Semaphore(SONARR_DATE_FETCH_CONCURRENCY)
 
-                    async def _fetch_episode_data(arr_series_id: int) -> Any:
+                    # AsyncSession cannot be queried by concurrent HTTP tasks.
+                    await ordering.preload_primary(
+                        session,
+                        {series_id for _arr_series, series_id in matched_series},
+                    )
+                    media_orders = {
+                        series_id: await ordering.primary_order(session, series_id)
+                        for _arr_series, series_id in matched_series
+                    }
+
+                    async def _fetch_episode_data(
+                        arr_series: Any, series_id: int
+                    ) -> Any:
                         async with semaphore:
-                            return await client.get_episode_sync_data(arr_series_id)
+                            order = await ordering.sonarr_order(
+                                client, arr_series.id, series=arr_series
+                            )
+                            media_order = media_orders[series_id]
+                            error = ordering_error(order, media_order)
+                            if error:
+                                LOG.warning(
+                                    f"Skipping Sonarr numbered data for series {arr_series.id} "
+                                    f"on config {config_id}: {error}"
+                                )
+                                return None
+                            return await client.get_episode_sync_data(arr_series.id)
 
                     date_results = await asyncio.gather(
                         *(
-                            _fetch_episode_data(arr_series.id)
-                            for arr_series, _series_id in matched_series
+                            _fetch_episode_data(arr_series, series_id)
+                            for arr_series, series_id in matched_series
                         ),
                         return_exceptions=True,
                     )
                     for (arr_series, series_id), episode_result in zip(
                         matched_series, date_results, strict=True
                     ):
+                        if episode_result is None:
+                            continue
                         if isinstance(episode_result, BaseException):
                             date_fetch_failed_series_ids.add(series_id)
                             LOG.warning(
@@ -3056,6 +3090,7 @@ async def sync_linked_data(
         # remove_stale=False because the linked server may only have partial seasons.
         ep_series_count = 0
         ep_updated_count = 0
+        ordering = EpisodeOrderingSnapshot()
         async with async_db() as session:
             # build tmdb_id -> Series row lookup for fast matching
             result_sids = await session.execute(
@@ -3070,6 +3105,17 @@ async def sync_linked_data(
                     continue
                 db_series = series_by_tmdb.get(ext.tmdb)
                 if db_series is None:
+                    continue
+
+                source_order = await ordering.media_order(
+                    service_instance, linked_series.id
+                )
+                main_order = await ordering.primary_order(session, db_series.id)
+                error = ordering_error(source_order, main_order)
+                if error:
+                    LOG.warning(
+                        f"Skipping linked TV watch data for series {db_series.id}: {error}"
+                    )
                     continue
 
                 # merge series level watch data

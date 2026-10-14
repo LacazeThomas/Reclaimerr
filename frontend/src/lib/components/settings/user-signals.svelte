@@ -59,6 +59,7 @@
     leaving_soon_collection_sort: "default",
     leaving_soon_visible_on_recommended: false,
     leaving_soon_visible_on_home: false,
+    leaving_soon_emby_home_enabled: false,
     leaving_soon_movie_poster_path: null,
     leaving_soon_series_poster_path: null,
     leaving_soon_movie_thumb_path: null,

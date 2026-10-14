@@ -179,6 +179,17 @@ class EmbyServiceBase:
         resp: JsonPayload = response.json()
         return resp
 
+    async def get_series_episode_order(
+        self, item_id: str, *, library_orders: dict[str, str | None] | None = None
+    ) -> str | None:
+        """Read the series display order; the API's empty default is aired."""
+        from backend.services.episode_ordering import normalize_episode_order
+
+        item = await self._make_request(f"Items/{item_id}", timeout=10)
+        if not isinstance(item, dict) or item.get("Type") != "Series":
+            return None
+        return normalize_episode_order(item.get("DisplayOrder") or "aired")
+
     async def get_live_sessions(self) -> PlaybackSnapshot:
         """Fetch live playback under the guard's total 10-second timeout."""
         response = await self.session.get(f"{self.service_url}/Sessions", timeout=10)
@@ -259,8 +270,8 @@ class EmbyServiceBase:
         way to force one would be rewriting each item's ForcedSortName, which
         would reorder the user's whole library, not just this collection.
 
-        `collection_visibility` is accepted and ignored: it maps to Plex's
-        "Visible on" hubs, which have no per-collection BoxSet equivalent.
+        This base ignores `collection_visibility`. EmbyService separately
+        manages home sections; Jellyfin has no equivalent integration.
         """
         del collection_sort, item_deadlines, collection_visibility
         if movie_title := str(movie_title or "").strip():

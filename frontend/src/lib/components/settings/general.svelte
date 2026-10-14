@@ -23,6 +23,7 @@
     type RequesterWatchUserMapping,
   } from "$lib/types/shared";
   import Notice from "$lib/components/notice.svelte";
+  import LoginBackgroundSettings from "$lib/components/settings/general/login-background.svelte";
   import DatabaseBackups from "$lib/components/settings/general/database-backups.svelte";
   import { auth } from "$lib/stores/auth";
   import {
@@ -67,6 +68,7 @@
   let moveDestinationMovies = $state("");
   let moveDestinationSeries = $state("");
   let activePlaybackProtectionEnabled = $state(true);
+  let playbackUnavailableProtectionEnabled = $state(true);
   let mediaServerFallbackEnabled = $state(true);
   let addArrImportExclusionsOnDelete = $state(true);
   let autoDeleteMovieDelayDays = $state(14);
@@ -95,6 +97,7 @@
   let leavingSoonCollectionSort = $state<LeavingSoonCollectionSort>("default");
   let leavingSoonVisibleOnRecommended = $state(false);
   let leavingSoonVisibleOnHome = $state(false);
+  let leavingSoonEmbyHomeEnabled = $state(false);
   // posters and thumbs are saved the moment they are picked, unlike everything
   // else on this page, so they are keyed by kind rather than folded into the
   // payload
@@ -233,6 +236,8 @@
         move_destination_movies: moveDestinationMovies,
         move_destination_series: moveDestinationSeries,
         active_playback_protection_enabled: activePlaybackProtectionEnabled,
+        playback_unavailable_protection_enabled:
+          playbackUnavailableProtectionEnabled,
         media_server_fallback_enabled: mediaServerFallbackEnabled,
         default_arr_delete_behavior: defaultArrDeleteBehavior,
         add_arr_import_exclusions_on_delete: addArrImportExclusionsOnDelete,
@@ -255,6 +260,7 @@
         leaving_soon_collection_sort: leavingSoonCollectionSort,
         leaving_soon_visible_on_recommended: leavingSoonVisibleOnRecommended,
         leaving_soon_visible_on_home: leavingSoonVisibleOnHome,
+        leaving_soon_emby_home_enabled: leavingSoonEmbyHomeEnabled,
       });
       toast.success("General settings saved");
     } catch (error) {
@@ -468,6 +474,8 @@
         moveDestinationSeries = settings.move_destination_series ?? "";
         activePlaybackProtectionEnabled =
           settings.active_playback_protection_enabled ?? true;
+        playbackUnavailableProtectionEnabled =
+          settings.playback_unavailable_protection_enabled ?? true;
         mediaServerFallbackEnabled =
           settings.media_server_fallback_enabled ?? true;
         defaultArrDeleteBehavior =
@@ -508,6 +516,8 @@
           settings.leaving_soon_visible_on_recommended ?? false;
         leavingSoonVisibleOnHome =
           settings.leaving_soon_visible_on_home ?? false;
+        leavingSoonEmbyHomeEnabled =
+          settings.leaving_soon_emby_home_enabled ?? false;
         leavingSoonArtwork = {
           poster: {
             movies: settings.leaving_soon_movie_poster_path ?? null,
@@ -566,6 +576,10 @@
       <Spinner class="w-12 h-12 text-primary" />
     </div>
   {:else}
+    {#if isAdmin}
+      <LoginBackgroundSettings />
+    {/if}
+
     <!-- worker polling -->
     <div class="bg-muted/50 border rounded-lg p-4 shadow-sm mt-6">
       <h3 class="font-semibold text-foreground items-center">Worker polling</h3>
@@ -924,6 +938,26 @@
           </div>
         </div>
 
+        <div class="mt-4">
+          <span class="text-sm text-foreground font-medium"
+            >Visible on (Emby)</span
+          >
+          <Label
+            class="flex items-start gap-2 rounded-md border border-border bg-background/40 p-3 text-sm text-foreground cursor-pointer max-w-2xl mt-3"
+          >
+            <Checkbox bind:checked={leavingSoonEmbyHomeEnabled} />
+            <span>
+              <span class="font-medium">Home screen for all users</span>
+              <span class="block text-xs text-muted-foreground">
+                Show movie and series rows on every user's Home screen. Requires
+                Emby Server 4.10 or newer. Rows update after each candidate scan
+                and disappear when empty. Turning this off removes Reclaimerr's
+                rows on the next sync.
+              </span>
+            </span>
+          </Label>
+        </div>
+
         <!-- custom collection posters -->
         <div class="mt-4">
           <span class="text-sm text-foreground font-medium"
@@ -1176,11 +1210,32 @@
       <p class="text-muted-foreground text-sm">
         Defer deletions and moves while media is playing or paused in Plex,
         Jellyfin, or Emby. This includes manual actions, duplicates, and upgrade
-        leftovers. If playback status is unavailable, affected files are kept.
-        Scheduled cleanup retries on its next run; manual actions and approved
-        requests need an explicit retry. Standalone unmonitor and
+        leftovers. Scheduled cleanup retries on its next run; manual actions and
+        approved requests need an explicit retry. Standalone unmonitor and
         quality-profile changes remain allowed.
       </p>
+      {#if activePlaybackProtectionEnabled}
+        <div class="mt-4 border-t pt-4">
+          <div class="flex items-center justify-between mb-1 gap-4">
+            <label
+              for="playbackUnavailableProtectionEnabled"
+              class="font-semibold text-foreground"
+            >
+              Defer When Playback Status Is Unavailable
+            </label>
+            <Switch
+              id="playbackUnavailableProtectionEnabled"
+              bind:checked={playbackUnavailableProtectionEnabled}
+            />
+          </div>
+          <p class="text-muted-foreground text-sm">
+            Keep affected files when Plex, Jellyfin, or Emby cannot report valid
+            live-session status. Turn this off to allow deletions and moves when
+            playback cannot be verified. Known playing or paused media stays
+            protected. This does not depend on watch history.
+          </p>
+        </div>
+      {/if}
     </div>
 
     <!-- media server fallback deletion -->

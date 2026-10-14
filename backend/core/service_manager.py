@@ -339,6 +339,7 @@ class ServiceManager:
             client = EmbyService(
                 api_key=api_key,
                 base_url=base_url,
+                config_id=config_id,
             )
             health = await client.health()
             if not health:

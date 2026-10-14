@@ -364,6 +364,7 @@ class GeneralSettingsResponse(BaseModel):
 
     # deletion routing
     active_playback_protection_enabled: bool = True
+    playback_unavailable_protection_enabled: bool = True
     media_server_fallback_enabled: bool = True
     default_arr_delete_behavior: Literal[
         "unmonitor", "unmonitor_only", "remove_if_empty"
@@ -409,6 +410,7 @@ class GeneralSettingsResponse(BaseModel):
     )
     leaving_soon_visible_on_recommended: bool = False
     leaving_soon_visible_on_home: bool = False
+    leaving_soon_emby_home_enabled: bool = False
     # read-only here: stored filenames served from /static/collection-posters.
     # The poster/thumb upload and delete endpoints own these; the general
     # settings PUT ignores whatever a client sends so a stale body cannot clear
@@ -561,7 +563,14 @@ class GeneralSettingsResponse(BaseModel):
 
 
 class OIDCSettingsResponse(BaseModel):
+    media_login_configured: bool = False
+    local_recovery_active: bool = False
     enabled: bool = False
+    allow_local_login: bool = True
+    allow_media_login: bool = True
+    allow_sso_login: bool = True
+    sso_tab_label: str = Field(default="", max_length=16)
+    sso_button_label: str = Field(default="", max_length=64)
     issuer_url: str = ""
     client_id: str = ""
     scopes: str = "openid profile email"
@@ -573,6 +582,11 @@ class OIDCSettingsResponse(BaseModel):
     client_secret_configured: bool = False
     updated_at: datetime | None = None
     updated_by: User | None = None
+
+    @field_validator("sso_tab_label", "sso_button_label", mode="before")
+    @classmethod
+    def normalize_sso_labels(cls, value: Any) -> Any:
+        return value.strip() if isinstance(value, str) else value
 
     @model_validator(mode="after")
     def sanitize_fields(self) -> OIDCSettingsResponse:
@@ -590,6 +604,11 @@ class OIDCSettingsResponse(BaseModel):
 
 class OIDCSettingsUpdate(BaseModel):
     enabled: bool = False
+    allow_local_login: bool = True
+    allow_media_login: bool = True
+    allow_sso_login: bool = True
+    sso_tab_label: str = Field(default="", max_length=16)
+    sso_button_label: str = Field(default="", max_length=64)
     issuer_url: str = ""
     client_id: str = ""
     client_secret: str | None = None  # None = keep existing secret
@@ -599,6 +618,11 @@ class OIDCSettingsUpdate(BaseModel):
         "client_secret_basic"
     )
     redirect_uri_override: str | None = None
+
+    @field_validator("sso_tab_label", "sso_button_label", mode="before")
+    @classmethod
+    def normalize_sso_labels(cls, value: Any) -> Any:
+        return value.strip() if isinstance(value, str) else value
 
     @model_validator(mode="after")
     def sanitize_fields(self) -> OIDCSettingsUpdate:

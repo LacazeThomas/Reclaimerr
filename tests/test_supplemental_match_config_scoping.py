@@ -11,7 +11,9 @@ the first's.
 from __future__ import annotations
 
 import asyncio
+from unittest.mock import AsyncMock
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -32,6 +34,7 @@ from backend.models.media import (
     AggregatedSeriesData,
     ExternalIDs,
 )
+from backend.services.episode_ordering import EpisodeOrderingSnapshot
 from backend.tasks.sync import (
     _build_series_supplemental_matches,
     _clear_supplemental_matches,
@@ -44,7 +47,9 @@ async def _make_session() -> tuple[async_sessionmaker[AsyncSession], object]:
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    session_maker = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    session_maker = async_sessionmaker(
+        engine, expire_on_commit=False, class_=AsyncSession
+    )
     return session_maker, engine
 
 
@@ -105,7 +110,9 @@ def test_replace_supplemental_matches_is_scoped_per_config():
             await db.commit()
 
             rows = (await db.execute(select(SupplementalMediaMatch))).scalars().all()
-            by_config = {row.source_service_config_id: row.source_item_id for row in rows}
+            by_config = {
+                row.source_service_config_id: row.source_item_id for row in rows
+            }
             assert by_config == {config_a.id: "a-item", config_b.id: "b-item"}
 
             # replacing config A's matches again must not touch config B's row
@@ -126,7 +133,9 @@ def test_replace_supplemental_matches_is_scoped_per_config():
             await db.commit()
 
             rows = (await db.execute(select(SupplementalMediaMatch))).scalars().all()
-            by_config = {row.source_service_config_id: row.source_item_id for row in rows}
+            by_config = {
+                row.source_service_config_id: row.source_item_id for row in rows
+            }
             assert by_config == {config_a.id: "a-item-updated", config_b.id: "b-item"}
         await engine.dispose()
 
@@ -244,13 +253,23 @@ def test_prune_supplemental_matches_only_removes_inactive_configs(monkeypatch):
     asyncio.run(run())
 
 
-def test_series_supplemental_matches_record_linked_episode_ids():
+@pytest.mark.parametrize("matching", [True, False])
+def test_series_supplemental_matches_record_linked_episode_ids(monkeypatch, matching):
     """A linked server of the main server's own type has nowhere else to put them.
 
     There is one episode id column per service type, and sync_linked_data only
     lets a linked server write it when its type differs from main's, so a second
     Plex server's episode ids exist only as supplemental matches.
     """
+
+    monkeypatch.setattr(
+        EpisodeOrderingSnapshot, "primary_order", AsyncMock(return_value="dvd")
+    )
+    monkeypatch.setattr(
+        EpisodeOrderingSnapshot,
+        "media_order",
+        AsyncMock(return_value="dvd" if matching else "aired"),
+    )
 
     async def run() -> None:
         session_maker, engine = await _make_session()
@@ -345,14 +364,18 @@ def test_series_supplemental_matches_record_linked_episode_ids():
                 for match in matches
                 if match.episode_id is not None
             }
-            assert set(episode_matches) == {"4242"}
-            match = episode_matches["4242"]
-            assert match.episode_id == episode.id
-            assert match.season_id == season.id
-            assert match.series_id == series.id
-            assert match.source_service_config_id == linked_config.id
-            assert match.signals is not None
-            assert match.signals["match"] == "episode_number"
+            if matching:
+                assert set(episode_matches) == {"4242"}
+                match = episode_matches["4242"]
+                assert match.episode_id == episode.id
+                assert match.season_id == season.id
+                assert match.series_id == series.id
+                assert match.source_service_config_id == linked_config.id
+                assert match.signals is not None
+                assert match.signals["match"] == "episode_number"
+            else:
+                assert not episode_matches
+                assert {match.source_item_id for match in matches} == {"linked-series"}
         await engine.dispose()
 
     asyncio.run(run())

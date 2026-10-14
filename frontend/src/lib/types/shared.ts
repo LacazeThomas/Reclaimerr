@@ -313,6 +313,7 @@ export interface GeneralSettings {
   move_destination_movies: string | null;
   move_destination_series: string | null;
   active_playback_protection_enabled?: boolean;
+  playback_unavailable_protection_enabled?: boolean;
   media_server_fallback_enabled: boolean;
   default_arr_delete_behavior:
     | "unmonitor"
@@ -339,6 +340,7 @@ export interface GeneralSettings {
   // Plex "Visible on" hubs; home covers both own and shared users' Home
   leaving_soon_visible_on_recommended: boolean;
   leaving_soon_visible_on_home: boolean;
+  leaving_soon_emby_home_enabled: boolean;
   // filenames served from /static/collection-posters; managed by the poster
   // and thumb upload and delete endpoints, never sent back on the settings PUT.
   leaving_soon_movie_poster_path: string | null;
@@ -494,8 +496,22 @@ export interface NotificationEmailStatus {
   already_configured: boolean;
 }
 
+export interface LoginMethodsResponse {
+  local_enabled: boolean;
+  media_enabled: boolean;
+  sso_enabled: boolean;
+  local_recovery_active: boolean;
+}
+
 export interface OIDCSettings {
   enabled: boolean;
+  allow_local_login: boolean;
+  allow_media_login: boolean;
+  allow_sso_login: boolean;
+  media_login_configured: boolean;
+  local_recovery_active: boolean;
+  sso_tab_label: string;
+  sso_button_label: string;
   issuer_url: string;
   client_id: string;
   scopes: string;

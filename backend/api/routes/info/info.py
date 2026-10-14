@@ -10,10 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core import __version__
 from backend.core.auth import get_current_user, has_permission
+from backend.core.utils.login_background import background_response
 from backend.database import get_db
 from backend.database.models import (
     AppUpdateState,
     DeleteRequest,
+    GeneralSettings,
     Movie,
     ProtectionRequest,
     ReclaimCandidate,
@@ -22,6 +24,7 @@ from backend.database.models import (
 )
 from backend.enums import Permission, ProtectionRequestStatus, UserRole
 from backend.models.info import SidebarIndicatorsResponse, UiIndicatorsResponse
+from backend.models.login_background import LoginBackgroundResponse
 from backend.services.admin_notices import has_unread_active_notices
 
 from .default_backdrops import TOP_RATED_BACKDROPS
@@ -312,3 +315,12 @@ async def get_backdrops(
         return {KEY: random_sample(TOP_RATED_BACKDROPS, num_of_bd)}
 
     return {KEY: random_sample(all_backdrops, num_of_bd)}
+
+
+@router.get("/login-background")
+async def get_login_background(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> LoginBackgroundResponse:
+    """Public login artwork only; no private application settings."""
+    row = (await db.execute(select(GeneralSettings))).scalars().first()
+    return background_response(row)

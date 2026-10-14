@@ -5,9 +5,18 @@ Reclaimerr is configured through General Settings, service settings, and a small
 ## Core Settings Areas
 
 - **Media servers** - connect Plex, Jellyfin, Emby, Radarr, and Sonarr
+- **Authentication** - choose allowed Local, Media, and SSO login methods, configure OpenID Connect, and customize SSO labels
 - **General Settings** - path mappings, move destinations, public application URL, fallback deletion, Leaving Soon, and default auto-delete review periods
 - **Tasks** - schedule scans, tagging, syncs, and optional auto-deletion
 - **Notifications** - configure Apprise destinations, and an instance-wide SMTP server so users can be notified at their account email address
+
+## Sonarr versions and episode ordering
+
+Reclaimerr uses Sonarr's `/api/v3` API for Sonarr v3, v4, and the v5 beta. Sonarr v5 retains this API but marks it deprecated. Read-only checks against v5.0.0.2569 verified series, episode inventory, files, and import dates; mutation contracts are covered by offline tests rather than live deletion tests.
+
+Set Sonarr and your media servers to the same episode order. Reclaimerr recognizes aired/official, DVD, and absolute ordering. Plex show overrides take precedence over library defaults; Jellyfin and Emby use the series display order. Matching supported orders are allowed, including DVD. Other streaming or alternate order identifiers are treated as unknown until their numbering equivalence is supported.
+
+Number-based cleanup is blocked when orders differ or cannot be verified. This includes season and episode actions, plus whole-show actions whose rules depend on watch data, episode inventory, or Sonarr import dates. The candidate's error identifies the affected instance. Correct the ordering, run **Sync Media**, and retry. Reclaimerr does not change server settings or translate historical episode numbers. Independent whole-series rules, such as title or year conditions, remain available.
 
 ## Important Environment Variables
 
@@ -19,6 +28,7 @@ Reclaimerr is configured through General Settings, service settings, and a small
 | `TZ` | Local timezone for cron-style schedules |
 | `UMASK` | Default permissions for created files |
 | `PROXY_TRUSTED_HOSTS` | Trusted reverse proxy IPs or CIDRs |
+| `AUTH_FORCE_LOCAL_LOGIN` | Recovery switch: restore local password login regardless of saved login methods (default: off) |
 | `FORWARD_AUTH_ENABLED` | Trust an authenticated username supplied by an approved reverse proxy |
 | `FORWARD_AUTH_USER_HEADER` | Forward-auth username header (default: `Remote-User`) |
 | `FORWARD_AUTH_TRUSTED_PROXIES` | Direct proxy IPs/CIDRs permitted to supply the identity header |
@@ -38,9 +48,36 @@ Email notifications are configured under Settings - Notifications, in the **Emai
 
 Application URL is configured in General Settings. It is used for Plex and OIDC callback generation behind a reverse proxy, and it is what lets notifications link back into Reclaimerr. When it is unset, notifications are still delivered but contain no links.
 
+## Login Background
+
+Administrators can customize the instance-wide sign-in screen under **Settings → General → Login background**:
+
+- **Default rotating backgrounds** keeps the existing media backdrops.
+- **Uploaded image** uses one static JPEG, PNG, or WebP. Uploads can be up to 10 MB and 25 million pixels; they are resized to fit within 3840 × 2160 and stored under the configured static directory in `login-backgrounds/`.
+- **Custom image URLs** replaces the default rotation with up to 50 direct HTTP or HTTPS image URLs, one per line. A single URL stays static; multiple URLs rotate in the listed order.
+
+The rotation interval can be set from 5 to 300 seconds. Click **Save login background** to apply the selected source, URLs, and interval. Uploading or replacing a file stores it immediately; removing an active uploaded image restores the default backgrounds.
+
+The dark overlay remains in place. Images that fail to load are skipped, and the default backgrounds are used if no custom image loads. URL images load directly in visitors' browsers, so their hosts must allow image embedding. Use HTTPS image URLs when Reclaimerr is served over HTTPS. Login artwork and configured URLs are available before sign-in.
+
+## Login Methods and Recovery
+
+Administrators can choose **Local**, **Media**, and **SSO** under **Settings → Authentication → Login Methods**. All are allowed by default; Media and SSO only appear on the login page when their providers are configured. Disabled methods reject new sign-ins through the API as well as disappearing from the page. Existing sessions stay signed in. These controls do not change API-token access or trusted proxy authentication.
+
+At least one configured method must remain allowed. Reclaimerr rejects settings that would remove every usable method, including disabling the last SSO provider or disabling/deleting the last media server when it is the only allowed method. **Restore defaults** selects all three methods; click **Save** to apply. Before disabling Local, test that your administrator account can sign in through an allowed provider.
+
+If an external provider fails or your admin identity cannot sign in:
+
+1. Set `AUTH_FORCE_LOCAL_LOGIN=true` in the process environment or the `.env` file loaded by Reclaimerr. For Docker Compose, add it to the service's `environment` or `env_file`, then recreate the container with `docker compose up -d --force-recreate reclaimerr`.
+2. Restart Reclaimerr if running outside Docker and sign in with an existing local admin username and password. The override enables Local without changing saved methods or resetting credentials. If the password is lost, use the existing `ADMIN_PASSWORD` startup reset.
+3. Under **Settings → Authentication**, restore Local or fix another method and click **Save**.
+4. Remove `AUTH_FORCE_LOCAL_LOGIN` and restart/recreate again. A recovery notice remains visible while the override is active.
+
+A trusted proxy that rejects requests before they reach Reclaimerr still needs its own recovery path. For an unrecognized proxy username, see `FORWARD_AUTH_ALLOW_LOCAL_FALLBACK` below; `AUTH_FORCE_LOCAL_LOGIN` does not bypass proxy identity checks.
+
 ## Trusted Proxy Authentication
 
-Reclaimerr can trust a username asserted by Authelia or another forward-auth reverse proxy instead of requiring a local sign-in. This is disabled by default, and it never creates accounts or grants roles: it only maps an asserted username onto an existing, active Reclaimerr user. Local sign-in keeps working for requests where the trusted proxy does not assert an identity.
+Reclaimerr can trust a username asserted by Authelia or another forward-auth reverse proxy instead of requiring a local sign-in. This is disabled by default, and it never creates accounts or grants roles: it only maps an asserted username onto an existing, active Reclaimerr user. When Local login is allowed in Authentication settings (or AUTH_FORCE_LOCAL_LOGIN recovery is enabled), local sign-in works for requests where the trusted proxy does not assert an identity.
 
 ```env
 FORWARD_AUTH_ENABLED=true

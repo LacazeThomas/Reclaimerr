@@ -192,6 +192,9 @@ async def update_general_settings(
     settings.active_playback_protection_enabled = (
         request.active_playback_protection_enabled
     )
+    settings.playback_unavailable_protection_enabled = (
+        request.playback_unavailable_protection_enabled
+    )
     if not request.active_playback_protection_enabled:
         from sqlalchemy import update
 
@@ -231,6 +234,7 @@ async def update_general_settings(
         request.leaving_soon_visible_on_recommended
     )
     settings.leaving_soon_visible_on_home = request.leaving_soon_visible_on_home
+    settings.leaving_soon_emby_home_enabled = request.leaving_soon_emby_home_enabled
     # leaving_soon_*_poster_path and leaving_soon_*_thumb_path are deliberately
     # not copied from the request: the upload and delete endpoints own those
     # columns. A client that loaded this settings body before an upload would

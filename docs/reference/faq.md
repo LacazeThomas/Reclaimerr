@@ -33,6 +33,10 @@ Reclaimerr re-applies the poster on **every sync**, because Plex deletes and reb
 
 **Collection Sort** decides the order of items inside the collection. `Server default` leaves whatever ordering the collection already has alone, `Alphabetical` sorts by title, and `Leaving soonest first` puts whatever disappears next at the front. This is **Plex only**: Plex stores a collection's order on the server, while Jellyfin and Emby have no equivalent - a collection there is ordered by whatever each client decides - so the setting is ignored on those servers.
 
+**Visible on (Emby)** adds movie and series rows to every user's Home screen on Emby Server 4.10 or newer. Enable **Home screen for all users** and save; the next candidate scan creates the rows. Newly added users receive rows on subsequent scans, and users only receive rows for collections with media they can access.
+
+Reclaimerr saves Emby's assigned row IDs, updates existing rows without changing their position or presentation options, and removes its rows before their collections become empty or are deleted. Rows return when candidates return. Turning the option off removes Reclaimerr's rows on the next sync; other Home sections are preserved. Disabling Leaving Soon or renaming a collection also cleans up its managed rows.
+
 ## How do I troubleshoot task failures?
 
 Check the task history first, then confirm the connected media server is reachable and the main server is configured. If you are behind a reverse proxy, verify the forwarded headers and trusted hosts.

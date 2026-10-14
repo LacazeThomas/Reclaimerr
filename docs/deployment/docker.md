@@ -27,6 +27,8 @@ API_PORT=8000
 TZ=America/New_York
 UMASK=022
 PROXY_TRUSTED_HOSTS=127.0.0.1,::1
+# Emergency local-login recovery; remove after restoring access
+# AUTH_FORCE_LOCAL_LOGIN=true
 # Optional trusted-header SSO (use the direct reverse-proxy IP/CIDR)
 # FORWARD_AUTH_ENABLED=true
 # FORWARD_AUTH_USER_HEADER=Remote-User

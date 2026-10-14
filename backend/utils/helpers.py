@@ -69,16 +69,17 @@ class LeavingSoonThumbs(LeavingSoonPosters):
 class LeavingSoonVisibility:
     """Where the managed collections are promoted on the media server.
 
-    Plex only: `recommended` is the library's Recommended tab, `home` covers
-    both the owner's and shared users' Home screens. All-off leaves the server
-    alone.
+    Plex: `recommended` is the library's Recommended tab, `home` covers
+    both the owner's and shared users' Home screens. `emby_home` separately
+    opts in to managed home rows for all Emby users.
     """
 
     recommended: bool = False
     home: bool = False
+    emby_home: bool = False
 
     def __bool__(self) -> bool:
-        return self.recommended or self.home
+        return self.recommended or self.home or self.emby_home
 
 
 def _normalize_title(value: object, default: str) -> str:

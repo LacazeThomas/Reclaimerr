@@ -137,6 +137,7 @@ from backend.services.admin_notices import (
 )
 from backend.services.arr_disk import load_arr_disk_space
 from backend.services.candidate_lifecycle import reconcile_candidate_schedule_events
+from backend.services.episode_ordering import EpisodeOrderingSnapshot
 from backend.services.lifecycle_webhooks import (
     dispatch_candidate_file_event,
     enqueue_event_deliveries,
@@ -1132,7 +1133,27 @@ async def _collect_rule_match_records(
                 target_ids=(target_ids_by_scope or {}).get(TARGET_EPISODE),
             )
         )
-    return matches
+    ordering = EpisodeOrderingSnapshot()
+    rules_by_id = {rule.id: rule for rule in rules}
+    safe_matches: list[MatchedCandidateRecord] = []
+    for record in matches:
+        error = None
+        if record.series_id and _candidate_uses_episode_numbering(record, rules_by_id):
+            error = await ordering.check_series(
+                db,
+                record.series_id,
+                _candidate_arr_config_ids(record, rules_by_id, "sonarr"),
+            )
+        if error:
+            if preview_metadata is not None:
+                preview_metadata.sonarr_unavailable_count += 1
+                preview_metadata.sonarr_error = error
+            LOG.debug(
+                f"Cleanup ordering check skipped series {record.series_id}: {error}"
+            )
+        else:
+            safe_matches.append(record)
+    return safe_matches
 
 
 async def collect_rule_preview_matches_with_metadata(
@@ -1881,6 +1902,29 @@ def _rule_uses_watch_sensitive_fields(rule: ReclaimRule) -> bool:
     return _rule_uses_playback_fields(rule) or any(
         collect_rule_conditions(rule.definition, field=field)
         for field in WATCH_SENSITIVE_RULE_FIELDS
+    )
+
+
+def _candidate_uses_episode_numbering(
+    candidate: ReclaimCandidate | MatchedCandidateRecord,
+    rules: Mapping[int, ReclaimRule],
+) -> bool:
+    """Protect numbered operations and whole-show decisions using episode data."""
+    if not candidate.series_id:
+        return False
+    matched = [rules[rid] for rid in candidate.matched_rule_ids or [] if rid in rules]
+    # Preserve protection outcomes even when integration metadata is unavailable.
+    if matched and all(
+        normalize_rule_outcome(r) == RULE_OUTCOME_PROTECT for r in matched
+    ):
+        return False
+    if candidate.season_id is not None or candidate.episode_id is not None:
+        return True
+    return any(
+        _rule_uses_watch_sensitive_fields(r) for r in matched
+    ) or _rules_use_any_field(
+        matched,
+        {"arr.days_since_file_added"},
     )
 
 
@@ -4700,6 +4744,9 @@ async def _load_leaving_soon_collection_settings(
         LeavingSoonVisibility(
             recommended=bool(settings_row.leaving_soon_visible_on_recommended),
             home=bool(settings_row.leaving_soon_visible_on_home),
+            emby_home=bool(
+                getattr(settings_row, "leaving_soon_emby_home_enabled", False)
+            ),
         ),
     )
 
@@ -7442,7 +7489,7 @@ def _rule_arr_config_ids(
 
 
 def _candidate_arr_config_ids(
-    candidate: "ReclaimCandidate",
+    candidate: ReclaimCandidate | MatchedCandidateRecord,
     rules: Mapping[int, ReclaimRule],
     service: Literal["radarr", "sonarr"],
 ) -> set[int] | None:
@@ -13799,10 +13846,24 @@ async def _run_playback_guarded_candidates(
             [],
         ).append(candidate)
     run = _move_candidates_prepared if moving else _delete_candidates_prepared
+    ordering = EpisodeOrderingSnapshot()
     for (_, _, file_free), group in groups.items():
         allowed: list[int] = []
         target = PlaybackTarget()
         for candidate in group:
+            if candidate.series_id and _candidate_uses_episode_numbering(
+                candidate, rules
+            ):
+                async with async_db() as db:
+                    error = await ordering.check_series(
+                        db,
+                        candidate.series_id,
+                        _candidate_arr_config_ids(candidate, rules, "sonarr"),
+                    )
+                if error:
+                    await _mark_candidate_delete_failure(candidate.id, error)
+                    result.failed += 1
+                    continue
             try:
                 if not file_free:
                     guard.expand_local_target(

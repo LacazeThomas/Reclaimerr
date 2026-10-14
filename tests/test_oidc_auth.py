@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from starlette.requests import Request
@@ -219,6 +220,101 @@ def test_update_oidc_settings_persists_token_endpoint_auth_method() -> None:
         await engine.dispose()
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    ("tab_label", "button_label", "expected_tab", "expected_button"),
+    [
+        (
+            "  Authentik  ",
+            "  Sign in with Authentik  ",
+            "Authentik",
+            "Sign in with Authentik",
+        ),
+        (" ", "\t", "SSO", "Sign In with SSO"),
+        ("Company", "", "Company", "Sign In with SSO"),
+        ("", "Company Login", "SSO", "Company Login"),
+    ],
+)
+def test_oidc_login_labels_persist_and_are_public(
+    tab_label: str, button_label: str, expected_tab: str, expected_button: str
+) -> None:
+    async def run() -> None:
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        session_maker = async_sessionmaker(engine, expire_on_commit=False)
+        async with session_maker() as db:
+            admin = _new_user(username="admin", email=None, role=UserRole.ADMIN)
+            db.add(admin)
+            await db.commit()
+            response = await update_oidc_settings(
+                request=OIDCSettingsUpdate(
+                    enabled=True,
+                    issuer_url="https://auth.example.com",
+                    client_id="reclaimerr",
+                    client_secret="secret",
+                    sso_tab_label=tab_label,
+                    sso_button_label=button_label,
+                ),
+                admin=admin,
+                db=db,
+            )
+            assert response.sso_tab_label == tab_label.strip()
+            assert response.sso_button_label == button_label.strip()
+            db.expunge_all()
+            row = (await db.execute(select(OIDCSettings))).scalar_one()
+            assert row.sso_tab_label == tab_label.strip()
+            assert row.sso_button_label == button_label.strip()
+            status = await auth_routes.oidc_auth_status(db=db)
+            assert status.model_dump() == {
+                "enabled": True,
+                "sso_tab_label": expected_tab,
+                "sso_button_label": expected_button,
+            }
+            # Clearing a previously saved label restores its default independently.
+            await update_oidc_settings(
+                request=OIDCSettingsUpdate(
+                    enabled=True,
+                    issuer_url="https://auth.example.com",
+                    client_id="reclaimerr",
+                ),
+                admin=admin,
+                db=db,
+            )
+            cleared = await auth_routes.oidc_auth_status(db=db)
+            assert cleared.sso_tab_label == "SSO"
+            assert cleared.sso_button_label == "Sign In with SSO"
+            assert cleared.enabled
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_oidc_status_without_settings_uses_default_labels() -> None:
+    async def run() -> None:
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        async with AsyncSession(engine) as db:
+            status = await auth_routes.oidc_auth_status(db=db)
+            assert status.model_dump() == {
+                "enabled": False,
+                "sso_tab_label": "SSO",
+                "sso_button_label": "Sign In with SSO",
+            }
+        await engine.dispose()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    ("field", "limit"), [("sso_tab_label", 16), ("sso_button_label", 64)]
+)
+def test_oidc_login_labels_enforce_length_limits(field: str, limit: int) -> None:
+    assert getattr(OIDCSettingsUpdate(**{field: "x" * limit}), field) == "x" * limit
+    with pytest.raises(ValidationError):
+        OIDCSettingsUpdate(**{field: "x" * (limit + 1)})
 
 
 def test_oidc_callback_redirect_uri_uses_override() -> None:

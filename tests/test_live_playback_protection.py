@@ -531,9 +531,10 @@ def test_fresh_install_migrations_match_playback_models():
         assert "playback_deferral" in {
             c["name"] for c in inspector.get_columns("delete_requests")
         }
-        assert "active_playback_protection_enabled" in {
-            c["name"] for c in inspector.get_columns("general_settings")
-        }
+        assert {
+            "active_playback_protection_enabled",
+            "playback_unavailable_protection_enabled",
+        } <= {c["name"] for c in inspector.get_columns("general_settings")}
     engine.dispose()
 
 
@@ -919,3 +920,129 @@ def test_deferred_request_survives_scan_and_can_retry_once(monkeypatch):
             await engine.dispose()
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+@pytest.mark.parametrize("defer_when_unavailable", [True, False])
+@pytest.mark.parametrize(
+    ("snapshot", "expected_code"),
+    [
+        (PlaybackSnapshot(), None),
+        (PlaybackSnapshot(available=False), "playback_unavailable"),
+        (PlaybackSnapshot((LiveSession(None),)), "playback_unavailable"),
+        (PlaybackSnapshot((LiveSession("7"),)), "currently_playing"),
+        (PlaybackSnapshot((LiveSession("other"),)), None),
+    ],
+)
+def test_playback_protection_policy(
+    monkeypatch, enabled, defer_when_unavailable, snapshot, expected_code
+):
+    async def run():
+        guard = PlaybackGuard(
+            enabled,
+            [],
+            {1: Service.PLEX, 2: Service.EMBY},
+            defer_when_unavailable=defer_when_unavailable,
+        )
+        # A second unavailable server must never override known active playback.
+        monkeypatch.setattr(
+            guard,
+            "_snapshot",
+            AsyncMock(side_effect=[snapshot, PlaybackSnapshot(available=False)]),
+        )
+        target = PlaybackTarget(identities={(1, "7", None)}, relevant_configs={1})
+        if not enabled or (
+            expected_code == "playback_unavailable" and not defer_when_unavailable
+        ):
+            code = None
+        else:
+            code = expected_code
+        if code:
+            with pytest.raises(PlaybackDeferred) as exc:
+                await guard.check(target)
+            assert exc.value.detail.code == code
+        else:
+            await guard.check(target)
+
+    asyncio.run(run())
+
+
+def test_unavailable_protection_settings_round_trip(monkeypatch):
+    from backend.api.routes.settings.general import (
+        get_general_settings,
+        update_general_settings,
+    )
+    from backend.models.settings import GeneralSettingsResponse
+
+    async def run():
+        engine, sessions = await _database(monkeypatch)
+        try:
+            async with sessions() as db:
+                admin = User(
+                    username="admin", password_hash="unused", role=UserRole.ADMIN
+                )
+                db.add(admin)
+                await db.commit()
+                initial = await get_general_settings(admin, db)
+                assert initial.active_playback_protection_enabled
+                assert initial.playback_unavailable_protection_enabled
+                assert GeneralSettingsResponse().playback_unavailable_protection_enabled
+                for active, unavailable in [
+                    (True, False),
+                    (False, False),
+                    (True, True),
+                ]:
+                    request = initial.model_copy(
+                        update={
+                            "active_playback_protection_enabled": active,
+                            "playback_unavailable_protection_enabled": unavailable,
+                        }
+                    )
+                    saved = await update_general_settings(request, admin, db)
+                    assert saved.playback_unavailable_protection_enabled is unavailable
+                    loaded = await get_general_settings(admin, db)
+                    assert loaded.playback_unavailable_protection_enabled is unavailable
+                    guard = await PlaybackGuard.load(db)
+                    assert guard.enabled is active
+                    assert guard.defer_when_unavailable is unavailable
+        finally:
+            await engine.dispose()
+
+    asyncio.run(run())
+
+
+def test_unavailable_protection_migration_preserves_existing_settings():
+    import importlib
+
+    import sqlalchemy as sa
+    from alembic.migration import MigrationContext
+    from alembic.operations import Operations
+
+    migration = importlib.import_module(
+        "backend.alembic.versions.f2a6c8e4d901_split_playback_unavailable_protection"
+    )
+    engine = sa.create_engine("sqlite:///:memory:")
+    with engine.begin() as conn:
+        conn.execute(
+            sa.text(
+                "CREATE TABLE general_settings (id INTEGER PRIMARY KEY, "
+                "active_playback_protection_enabled BOOLEAN NOT NULL)"
+            )
+        )
+        conn.execute(sa.text("INSERT INTO general_settings VALUES (1, 1), (2, 0)"))
+        with Operations.context(MigrationContext.configure(conn)):
+            migration.upgrade()
+            assert conn.execute(
+                sa.text(
+                    "SELECT active_playback_protection_enabled, "
+                    "playback_unavailable_protection_enabled "
+                    "FROM general_settings ORDER BY id"
+                )
+            ).all() == [(1, 1), (0, 1)]
+            migration.downgrade()
+        assert conn.execute(
+            sa.text(
+                "SELECT active_playback_protection_enabled FROM general_settings ORDER BY id"
+            )
+        ).all() == [(1,), (0,)]
+    engine.dispose()

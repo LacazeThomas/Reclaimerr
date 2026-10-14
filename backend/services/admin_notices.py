@@ -20,6 +20,7 @@ NOTICE_KEY_SONARR_RULE_DATA = "sonarr_rule_data_unavailable"
 NOTICE_KEY_PLAYBACK_RULE_DATA = "playback_rule_data_unavailable"
 NOTICE_KEY_STALE_LIBRARY_IDS = "stale_library_ids"
 NOTICE_KEY_FORWARD_AUTH_FALLBACK = "forward_auth_local_fallback_enabled"
+NOTICE_KEY_LOGIN_RECOVERY = "login_local_recovery_enabled"
 
 
 def _normalize_context(context: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -305,6 +306,29 @@ async def sync_forward_auth_fallback_notice(
             "https://jessielw.github.io/Reclaimerr/getting-started/configuration/"
             "#trusted-proxy-authentication"
         ),
+    )
+
+
+async def sync_login_recovery_notice(
+    db: AsyncSession, *, recovery_active: bool
+) -> None:
+    """Remind administrators to remove the temporary local-login override."""
+    if not recovery_active:
+        await resolve_singleton_notice(db, dedupe_key=NOTICE_KEY_LOGIN_RECOVERY)
+        return
+    await upsert_singleton_notice(
+        db,
+        dedupe_key=NOTICE_KEY_LOGIN_RECOVERY,
+        kind="login_local_recovery",
+        severity="warning",
+        title="Local login recovery is enabled",
+        message=(
+            "AUTH_FORCE_LOCAL_LOGIN is enabled, so local username/password login "
+            "is available regardless of the saved login methods. Restore a working "
+            "method in Settings → Authentication, then remove the variable and restart."
+        ),
+        action_label="Go to Settings",
+        action_href="#/settings",
     )
 
 

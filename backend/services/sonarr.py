@@ -125,13 +125,14 @@ def build_sonarr_series_from_dict(data: Mapping[str, object]) -> SonarrSeries:
         seasons=seasons,
         tags=_as_int_list(data.get("tags")),
         raw=data,
+        season_type=_as_optional_str(data.get("seasonType")),
     )
 
 
 class SonarrClient:
     """Client for Sonarr API operations."""
 
-    __slots__ = ("api_key", "base_url", "timeout", "session")
+    __slots__ = ("api_key", "base_url", "timeout", "session", "_legacy_order")
 
     def __init__(self, api_key: str, base_url: str, timeout: int = 300) -> None:
         """Initialize Sonarr client.
@@ -144,6 +145,7 @@ class SonarrClient:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self._legacy_order: bool | None = None
 
         self.session = niquests.AsyncSession()
         self.session.headers.update(
@@ -206,6 +208,22 @@ class SonarrClient:
         if response.content:
             return status_code, response.json()
         return status_code, None
+
+    async def get_series_episode_order(
+        self, series_id: int, *, series: SonarrSeries | None = None
+    ) -> str | None:
+        """Read ordering; only older servers may omit the ordering field."""
+        from backend.services.episode_ordering import normalize_episode_order
+
+        series = series if series is not None else await self.get_series(series_id)
+        if series.raw is not None and "seasonType" in series.raw:
+            return normalize_episode_order(series.season_type)
+        if self._legacy_order is None:
+            _, status = await self._make_request("GET", "system/status")
+            version = status.get("version") if isinstance(status, Mapping) else None
+            major = as_int(str(version).split(".")[0]) if version else None
+            self._legacy_order = major in {3, 4}
+        return "aired" if self._legacy_order else None
 
     async def health(self) -> HealthResult:
         """Check server health and API key, reporting why it failed."""
@@ -671,6 +689,11 @@ class SonarrClient:
             raise ValueError(
                 f"Invalid response for series {series_id} (status: {status_code})"
             )
+        seasons = [
+            dict(season) if isinstance(season, Mapping) else season
+            for season in seasons
+        ]
+        series_payload["seasons"] = seasons
         for season in seasons:
             if (
                 isinstance(season, dict)

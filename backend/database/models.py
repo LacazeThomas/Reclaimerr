@@ -254,6 +254,26 @@ class ServiceConfig(Base):
     )
 
 
+class EmbyHomeSection(Base):
+    """Emby-assigned IDs for home rows owned by Reclaimerr."""
+
+    __tablename__ = "emby_home_sections"
+    __table_args__ = (
+        UniqueConstraint(
+            "service_config_id", "user_id", "kind", name="uq_emby_home_user_kind"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, init=False)
+    service_config_id: Mapped[int] = mapped_column(
+        ForeignKey("service_configs.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(16))
+    section_id: Mapped[str] = mapped_column(String(128))
+    collection_id: Mapped[str] = mapped_column(String(64))
+
+
 class ServiceMediaLibrary(Base):
     """Media libraries available from the main media server.
 
@@ -353,6 +373,12 @@ class GeneralSettings(Base):
         Integer, primary_key=True, init=False, autoincrement=True
     )
 
+    # Instance-wide login appearance, managed by its own settings endpoints.
+    login_background_mode: Mapped[str] = mapped_column(String(16), default="default")
+    login_background_urls: Mapped[list[str]] = mapped_column(JSON, default_factory=list)
+    login_background_path: Mapped[str | None] = mapped_column(String(255), default=None)
+    login_background_interval: Mapped[int] = mapped_column(Integer, default=5)
+
     # cleanup and tagging settings
     worker_poll_min_seconds: Mapped[float | None] = mapped_column(Float, default=None)
     worker_poll_max_seconds: Mapped[float | None] = mapped_column(Float, default=None)
@@ -372,6 +398,9 @@ class GeneralSettings(Base):
 
     # deletion routing
     active_playback_protection_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True
+    )
+    playback_unavailable_protection_enabled: Mapped[bool] = mapped_column(
         Boolean, default=True
     )
     media_server_fallback_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -429,6 +458,7 @@ class GeneralSettings(Base):
         Boolean, default=False
     )
     leaving_soon_visible_on_home: Mapped[bool] = mapped_column(Boolean, default=False)
+    leaving_soon_emby_home_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     # custom collection artwork; filenames under settings.collection_posters_dir,
     # not paths. Written only by the poster/thumb upload/delete endpoints - the
     # general settings PUT deliberately leaves them alone.
@@ -487,6 +517,11 @@ class OIDCSettings(Base):
     token_endpoint_auth_method: Mapped[str] = mapped_column(
         String(32), default="client_secret_basic"
     )
+    allow_local_login: Mapped[bool] = mapped_column(Boolean, default=True)
+    allow_media_login: Mapped[bool] = mapped_column(Boolean, default=True)
+    allow_sso_login: Mapped[bool] = mapped_column(Boolean, default=True)
+    sso_tab_label: Mapped[str] = mapped_column(String(16), default="")
+    sso_button_label: Mapped[str] = mapped_column(String(64), default="")
     redirect_uri_override: Mapped[str | None] = mapped_column(String(500), default=None)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now(), init=False

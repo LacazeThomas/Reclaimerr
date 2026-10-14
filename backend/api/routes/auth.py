@@ -39,6 +39,11 @@ from backend.core.auth import (
 )
 from backend.core.encryption import fer_decrypt
 from backend.core.logger import LOG
+from backend.core.login_policy import (
+    LoginMethod,
+    get_login_methods,
+    require_login_method,
+)
 from backend.core.oidc import (
     OIDCConfigError,
     OIDCError,
@@ -56,6 +61,7 @@ from backend.database.models import GeneralSettings, OIDCSettings, User, UserSes
 from backend.enums import Service
 from backend.models.auth import (
     AuthResponse,
+    LoginMethodsResponse,
     LoginRequest,
     MediaAuthProvidersResponse,
     MediaLoginRequest,
@@ -105,8 +111,11 @@ async def _issue_login_session(
     response: Response,
     user: User,
     db: AsyncSession,
+    login_method: LoginMethod,
 ) -> None:
     """Create a tracked user session and issue auth cookie."""
+    # Recheck after provider calls: an admin may disable the method mid-flow.
+    await require_login_method(db, login_method)
     session_id = generate_session_id()
     now = datetime.now(UTC)
     user.last_login_at = now
@@ -555,13 +564,26 @@ async def auth_signin_window() -> HTMLResponse:
     return _auth_page("Connecting...", script=_LOADING_SCRIPT)
 
 
+@router.get("/methods", response_model=LoginMethodsResponse)
+async def login_methods(db: AsyncSession = Depends(get_db)) -> LoginMethodsResponse:
+    """Public login-page policy. Existing sessions are not revoked by policy changes."""
+    return await get_login_methods(db)
+
+
 @router.get("/oidc/status", response_model=OIDCAuthStatusResponse)
 async def oidc_auth_status(
     db: AsyncSession = Depends(get_db),
 ) -> OIDCAuthStatusResponse:
     result = await db.execute(select(OIDCSettings))
     settings_row = result.scalars().first()
-    return OIDCAuthStatusResponse(enabled=_oidc_enabled(settings_row))
+    return OIDCAuthStatusResponse(
+        enabled=_oidc_enabled(settings_row)
+        and (await get_login_methods(db)).sso_enabled,
+        sso_tab_label=(settings_row.sso_tab_label.strip() if settings_row else "")
+        or "SSO",
+        sso_button_label=(settings_row.sso_button_label.strip() if settings_row else "")
+        or "Sign In with SSO",
+    )
 
 
 @router.get("/oidc/start")
@@ -571,6 +593,7 @@ async def oidc_start(
     mode: PlexAuthFlowMode = Query(default="redirect"),
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
+    await require_login_method(db, "sso")
     result = await db.execute(select(OIDCSettings))
     settings_row = result.scalars().first()
     if settings_row is None:
@@ -635,6 +658,12 @@ async def oidc_callback(
         # origin allowed there is not silently downgraded to "/" now.
         request_origin=_absolute_base_url(stored_return_to),
     )
+    if not (await get_login_methods(db)).sso_enabled:
+        return _auth_flow_response(
+            mode,
+            "SSO login is disabled by the administrator",
+            redirect_to=redirect_target,
+        )
     if error:
         return _auth_flow_response(
             mode,
@@ -734,7 +763,9 @@ async def oidc_callback(
         )
 
     response = _auth_flow_response(mode, redirect_to=redirect_target)
-    await _issue_login_session(request=request, response=response, user=user, db=db)
+    await _issue_login_session(
+        request=request, response=response, user=user, db=db, login_method="sso"
+    )
     return response
 
 
@@ -749,6 +780,7 @@ async def login(
     db: AsyncSession = Depends(get_db),
 ) -> AuthResponse:
     """Login with username and password."""
+    await require_login_method(db, "local")
     # email or username can be used as the identifier for login, so we need to check both fields for a match
     result = await db.execute(
         select(User).where(
@@ -771,7 +803,9 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled"
         )
 
-    await _issue_login_session(request=request, response=response, user=user, db=db)
+    await _issue_login_session(
+        request=request, response=response, user=user, db=db, login_method="local"
+    )
     return AuthResponse(user=UserInfo.from_user(user))
 
 
@@ -779,7 +813,8 @@ async def login(
 async def list_media_auth_login_providers(
     db: AsyncSession = Depends(get_db),
 ) -> MediaAuthProvidersResponse:
-    providers = await list_media_auth_providers(db)
+    methods = await get_login_methods(db)
+    providers = await list_media_auth_providers(db) if methods.media_enabled else []
     payload = [_serialize_media_provider(provider) for provider in providers]
     default_service_config_id = payload[0].service_config_id if payload else None
     return MediaAuthProvidersResponse(
@@ -797,6 +832,7 @@ async def media_login(
     db: AsyncSession = Depends(get_db),
 ) -> AuthResponse:
     """Login with media server credentials for providers that support it (e.g. Emby/Jellyfin family users)."""
+    await require_login_method(db, "media")
     provider = await get_media_auth_provider(
         db,
         service_config_id=body.service_config_id,
@@ -854,7 +890,9 @@ async def media_login(
             detail=str(exc),
         ) from exc
 
-    await _issue_login_session(request=request, response=response, user=user, db=db)
+    await _issue_login_session(
+        request=request, response=response, user=user, db=db, login_method="media"
+    )
     return AuthResponse(user=UserInfo.from_user(user))
 
 
@@ -867,6 +905,7 @@ async def media_plex_start(
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
     """Start Plex login flow by requesting a PIN and redirecting user to Plex auth page."""
+    await require_login_method(db, "media")
     provider = await get_media_auth_provider(
         db,
         service_config_id=service_config_id,
@@ -975,6 +1014,10 @@ async def media_plex_callback(
         request_origin=_absolute_base_url(pending.return_to),
     )
 
+    if not (await get_login_methods(db)).media_enabled:
+        return _auth_error_redirect(
+            "Media login is disabled by the administrator", redirect_to=redirect_target
+        )
     provider = await get_media_auth_provider(
         db,
         service_config_id=pending.service_config_id,
@@ -1025,7 +1068,9 @@ async def media_plex_callback(
         )
 
     response = RedirectResponse(url=redirect_target, status_code=status.HTTP_302_FOUND)
-    await _issue_login_session(request=request, response=response, user=user, db=db)
+    await _issue_login_session(
+        request=request, response=response, user=user, db=db, login_method="media"
+    )
     return response
 
 
@@ -1058,6 +1103,11 @@ async def media_plex_poll(
     if state is None or pending is None:
         return _plex_poll_response("expired")
 
+    if not (await get_login_methods(db)).media_enabled:
+        pop_pending_plex_auth(state)
+        return _plex_poll_response(
+            "error", "Media login is disabled by the administrator"
+        )
     provider = await get_media_auth_provider(
         db,
         service_config_id=pending.service_config_id,
@@ -1105,7 +1155,9 @@ async def media_plex_poll(
 
     pop_pending_plex_auth(state)
     response = _plex_poll_response("authenticated")
-    await _issue_login_session(request=request, response=response, user=user, db=db)
+    await _issue_login_session(
+        request=request, response=response, user=user, db=db, login_method="media"
+    )
     return response
 
 

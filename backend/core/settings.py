@@ -88,6 +88,15 @@ class Settings(BaseSettings):
         ),
     )
 
+    auth_force_local_login: bool = Field(
+        default=False,
+        description=(
+            "Recovery switch: enable local username/password login regardless of the "
+            "saved login-method settings. Remove after restoring access. "
+            "Does not reset passwords or bypass trusted-proxy authentication."
+        ),
+    )
+
     # trusted reverse-proxy authentication
     forward_auth_enabled: bool = Field(
         default=False,
