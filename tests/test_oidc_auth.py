@@ -20,7 +20,6 @@ from backend.api.routes.settings.oidc import update_oidc_settings
 from backend.core.encryption import fer_encrypt
 from backend.core.oidc import (
     OIDCProviderMetadata,
-    TokenEndpointAuthMethod,
     create_oidc_client,
     extract_userinfo,
 )
@@ -145,19 +144,13 @@ def _new_user(*, username: str, email: str | None, role: UserRole) -> User:
     )
 
 
-@pytest.mark.parametrize(
-    "token_endpoint_auth_method", ["client_secret_basic", "client_secret_post"]
-)
-def test_oidc_client_uses_pkce(
-    monkeypatch, token_endpoint_auth_method: TokenEndpointAuthMethod
-) -> None:
+def test_oidc_client_uses_pkce(monkeypatch) -> None:
     async def run() -> None:
         client = create_oidc_client(
             issuer_url="https://auth.example.com",
             client_id="reclaimerr",
             client_secret="secret",
             scopes="openid profile email",
-            token_endpoint_auth_method=token_endpoint_auth_method,
         )
         monkeypatch.setattr(
             client,
