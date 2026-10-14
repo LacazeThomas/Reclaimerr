@@ -192,6 +192,9 @@ async def update_general_settings(
     settings.active_playback_protection_enabled = (
         request.active_playback_protection_enabled
     )
+    settings.playback_unavailable_protection_enabled = (
+        request.playback_unavailable_protection_enabled
+    )
     if not request.active_playback_protection_enabled:
         from sqlalchemy import update
 

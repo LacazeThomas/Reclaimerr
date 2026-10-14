@@ -313,6 +313,7 @@ export interface GeneralSettings {
   move_destination_movies: string | null;
   move_destination_series: string | null;
   active_playback_protection_enabled?: boolean;
+  playback_unavailable_protection_enabled?: boolean;
   media_server_fallback_enabled: boolean;
   default_arr_delete_behavior:
     | "unmonitor"

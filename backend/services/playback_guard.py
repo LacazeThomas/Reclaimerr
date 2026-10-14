@@ -68,6 +68,7 @@ class PlaybackGuard:
     mappings: list[dict[str, Any]]
     configs: dict[int, Service]
     snapshots: dict[int, tuple[float, PlaybackSnapshot]] = field(default_factory=dict)
+    defer_when_unavailable: bool = True
 
     @classmethod
     async def load(cls, db: AsyncSession) -> PlaybackGuard:
@@ -83,6 +84,9 @@ class PlaybackGuard:
             settings.active_playback_protection_enabled if settings else True,
             list(settings.path_mappings or []) if settings else [],
             {row.id: row.service_type for row in configs},
+            defer_when_unavailable=(
+                settings.playback_unavailable_protection_enabled if settings else True
+            ),
         )
 
     async def _snapshot(self, config_id: int) -> PlaybackSnapshot:
@@ -253,7 +257,7 @@ class PlaybackGuard:
                 not s.paths and not s.item_id for s in snapshot.sessions
             ):
                 unavailable.append(cid)
-        if playing or unavailable:
+        if playing or (unavailable and self.defer_when_unavailable):
             raise PlaybackDeferred(
                 PlaybackDeferral(
                     "currently_playing" if playing else "playback_unavailable",

@@ -67,6 +67,7 @@
   let moveDestinationMovies = $state("");
   let moveDestinationSeries = $state("");
   let activePlaybackProtectionEnabled = $state(true);
+  let playbackUnavailableProtectionEnabled = $state(true);
   let mediaServerFallbackEnabled = $state(true);
   let addArrImportExclusionsOnDelete = $state(true);
   let autoDeleteMovieDelayDays = $state(14);
@@ -234,6 +235,8 @@
         move_destination_movies: moveDestinationMovies,
         move_destination_series: moveDestinationSeries,
         active_playback_protection_enabled: activePlaybackProtectionEnabled,
+        playback_unavailable_protection_enabled:
+          playbackUnavailableProtectionEnabled,
         media_server_fallback_enabled: mediaServerFallbackEnabled,
         default_arr_delete_behavior: defaultArrDeleteBehavior,
         add_arr_import_exclusions_on_delete: addArrImportExclusionsOnDelete,
@@ -470,6 +473,8 @@
         moveDestinationSeries = settings.move_destination_series ?? "";
         activePlaybackProtectionEnabled =
           settings.active_playback_protection_enabled ?? true;
+        playbackUnavailableProtectionEnabled =
+          settings.playback_unavailable_protection_enabled ?? true;
         mediaServerFallbackEnabled =
           settings.media_server_fallback_enabled ?? true;
         defaultArrDeleteBehavior =
@@ -1200,11 +1205,32 @@
       <p class="text-muted-foreground text-sm">
         Defer deletions and moves while media is playing or paused in Plex,
         Jellyfin, or Emby. This includes manual actions, duplicates, and upgrade
-        leftovers. If playback status is unavailable, affected files are kept.
-        Scheduled cleanup retries on its next run; manual actions and approved
-        requests need an explicit retry. Standalone unmonitor and
+        leftovers. Scheduled cleanup retries on its next run; manual actions and
+        approved requests need an explicit retry. Standalone unmonitor and
         quality-profile changes remain allowed.
       </p>
+      {#if activePlaybackProtectionEnabled}
+        <div class="mt-4 border-t pt-4">
+          <div class="flex items-center justify-between mb-1 gap-4">
+            <label
+              for="playbackUnavailableProtectionEnabled"
+              class="font-semibold text-foreground"
+            >
+              Defer When Playback Status Is Unavailable
+            </label>
+            <Switch
+              id="playbackUnavailableProtectionEnabled"
+              bind:checked={playbackUnavailableProtectionEnabled}
+            />
+          </div>
+          <p class="text-muted-foreground text-sm">
+            Keep affected files when Plex, Jellyfin, or Emby cannot report valid
+            live-session status. Turn this off to allow deletions and moves when
+            playback cannot be verified. Known playing or paused media stays
+            protected. This does not depend on watch history.
+          </p>
+        </div>
+      {/if}
     </div>
 
     <!-- media server fallback deletion -->

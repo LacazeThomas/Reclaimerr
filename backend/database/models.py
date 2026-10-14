@@ -394,6 +394,9 @@ class GeneralSettings(Base):
     active_playback_protection_enabled: Mapped[bool] = mapped_column(
         Boolean, default=True
     )
+    playback_unavailable_protection_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=True
+    )
     media_server_fallback_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     default_arr_delete_behavior: Mapped[str] = mapped_column(
         String(32), default="unmonitor"
