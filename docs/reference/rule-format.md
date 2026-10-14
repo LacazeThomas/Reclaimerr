@@ -141,7 +141,7 @@ A rule without a `library.id` condition covers every library of its media type. 
 | Key | Default | Value |
 | --- | --- | --- |
 | `outcome` | `"candidate"` | `"candidate"` makes matches cleanup candidates. `"protect"` protects matches and ignores the rest of the action. |
-| `arr_action` | `"delete"` | `"delete"`, `"unmonitor"`, `"unmonitor_only"`, `"unmonitor_delete_monitor_new_seasons"`, or `"change_quality_profile"` |
+| `arr_action` | `"delete"` | `"delete"`, `"unmonitor"`, `"unmonitor_only"`, `"unmonitor_delete_monitor_new_seasons"`, `"unmonitor_delete_list_exclusion"`, `"unmonitor_delete_monitor_or_exclude"`, or `"change_quality_profile"` |
 | `tag_enabled` | `true` | Tag matches in Radarr/Sonarr |
 | `arr_tag` | rule name | Tag text. Converted to a `rec-` slug. |
 | `auto_delete_enabled` | `false` | Run the action automatically when the review period ends |
@@ -153,7 +153,8 @@ A rule without a `library.id` condition covers every library of its media type. 
 
 Arr action limits:
 
-- `unmonitor_delete_monitor_new_seasons` is only allowed on `season` rules.
+- `unmonitor_delete_monitor_new_seasons` and `unmonitor_delete_monitor_or_exclude` are only allowed on `season` rules.
+- `unmonitor_delete_list_exclusion` is allowed on `movie_version` and `season` rules. Sonarr requires an ended show and removal of the latest regular season before adding an exclusion.
 - `change_quality_profile` is only allowed on `movie_version` and `series` rules, and needs `quality_profile_id`.
 
 See [Arr Action](../usage/rules.md#arr-action) for what each action does.

@@ -731,6 +731,40 @@ class SonarrClient:
                 f"Sonarr did not unmonitor season {season_number} of series {series_id}"
             )
 
+    async def exclude_ended_series_if_latest(
+        self, series_id: int, season_number: int
+    ) -> bool:
+        """Exclude only an ended show after its latest known regular season is removed."""
+        series = await self.get_series(series_id)
+        regular = [s.season_number for s in series.seasons if s.season_number > 0]
+        if not any(s.season_number == season_number for s in series.seasons):
+            raise ValueError(
+                f"Season {season_number} missing from Sonarr series {series_id}"
+            )
+        raw = series.raw or {}
+        if season_number <= 0 or not regular or season_number != max(regular):
+            return False
+        if str(raw.get("status", "")).lower() != "ended":
+            return False
+        tvdb_id = as_int(raw.get("tvdbId"))
+        if tvdb_id is None or tvdb_id <= 0:
+            raise ValueError("Sonarr series is missing a TVDB ID; exclusion not added")
+        # Retain the series, but stop monitoring it when the ended branch wins.
+        await self.unmonitor_series([series_id])
+        _, exclusions = await self._make_request("GET", "importlistexclusion")
+        if not isinstance(exclusions, list):
+            raise ValueError("Invalid Sonarr import list exclusions response")
+        if not any(
+            as_int(e.get("tvdbId")) == tvdb_id for e in _mapping_list(exclusions)
+        ):
+            await self._make_request(
+                "POST",
+                "importlistexclusion",
+                json={"tvdbId": tvdb_id, "title": series.title},
+                error_context="Sonarr add import list exclusion",
+            )
+        return True
+
     async def enable_new_seasons_if_latest(
         self, series_id: int, season_number: int
     ) -> bool:

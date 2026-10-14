@@ -23,7 +23,10 @@ from backend.core.auto_delete import resolve_auto_delete_policy
 from backend.core.logger import LOG
 from backend.core.protection_scope import detach_movie_version_references
 from backend.core.rule_actions import (
+    ARR_ACTION_LIST_EXCLUSION,
     ARR_ACTION_MONITOR_NEW_SEASONS,
+    ARR_ACTION_MONITOR_OR_EXCLUDE,
+    SEASON_FINALIZATION_ACTIONS,
     get_arr_service_config_ids,
 )
 from backend.core.rule_engine import (
@@ -210,11 +213,13 @@ ArrDeleteAction: TypeAlias = Literal[
     "remove_if_empty",
     "change_quality_profile",
     "unmonitor_delete_monitor_new_seasons",
+    "unmonitor_delete_list_exclusion",
+    "unmonitor_delete_monitor_or_exclude",
 ]
 # actions that unmonitor the arr entry rather than deleting it outright.
 # "unmonitor_only" additionally skips touching the underlying files.
 UNMONITOR_LIKE_ARR_ACTIONS: frozenset[str] = frozenset(
-    {"unmonitor", "unmonitor_only", ARR_ACTION_MONITOR_NEW_SEASONS}
+    {"unmonitor", "unmonitor_only", *SEASON_FINALIZATION_ACTIONS}
 )
 # Not a removal at all: the entry keeps its files and moves to another quality
 # profile, so it is routed away from the delete pipeline entirely.
@@ -7532,7 +7537,8 @@ def _get_arr_action(
     """Resolve ARR behavior for a candidate.
 
     Matched rules remain authoritative: profile changes and keeping files win,
-    followed by ordinary unmonitor, conditional new-season monitoring, and delete.
+    followed by ordinary unmonitor, monitoring, combined monitoring/exclusion,
+    exclusion, and delete.
     Synthetic/no-rule candidates fall back to the global delete behavior.
     """
     matched_rules = [
@@ -7552,6 +7558,10 @@ def _get_arr_action(
         resolved_action = "unmonitor"
     elif ARR_ACTION_MONITOR_NEW_SEASONS in matched_arr_actions:
         resolved_action = ARR_ACTION_MONITOR_NEW_SEASONS
+    elif ARR_ACTION_MONITOR_OR_EXCLUDE in matched_arr_actions:
+        resolved_action = ARR_ACTION_MONITOR_OR_EXCLUDE
+    elif ARR_ACTION_LIST_EXCLUSION in matched_arr_actions:
+        resolved_action = ARR_ACTION_LIST_EXCLUSION
     else:
         resolved_action = "delete" if matched_rule_ids else default_behavior
 
@@ -7625,8 +7635,9 @@ def _merge_arr_action(
     1. ``change_quality_profile`` wins - nothing is removed or unmonitored
     2. ``unmonitor_only`` wins - files are never touched
     3. ``unmonitor`` wins over conditional new-season monitoring
-    4. conditional new-season monitoring wins over delete
-    5. explicit rule ``delete`` beats fallback ``remove_if_empty``
+    4. monitoring wins over combined monitoring/exclusion, then exclusion
+    5. exclusions retain the entry and win over delete
+    6. explicit rule ``delete`` beats fallback ``remove_if_empty``
     """
     if (
         current == ARR_ACTION_CHANGE_QUALITY_PROFILE
@@ -7639,6 +7650,9 @@ def _merge_arr_action(
         return "unmonitor"
     if ARR_ACTION_MONITOR_NEW_SEASONS in (current, candidate_action):
         return ARR_ACTION_MONITOR_NEW_SEASONS
+    for action in (ARR_ACTION_MONITOR_OR_EXCLUDE, ARR_ACTION_LIST_EXCLUSION):
+        if action in (current, candidate_action):
+            return action
     if current == "delete" or candidate_action == "delete":
         return "delete"
     return "remove_if_empty"
@@ -8547,9 +8561,28 @@ async def _prepare_new_season_move(
 
 
 async def _finalize_new_season_monitoring(
-    client: SonarrClient, series_id: int, season_number: int, config_id: int | None
+    client: SonarrClient,
+    series_id: int,
+    season_number: int,
+    config_id: int | None,
+    *,
+    action: ArrDeleteAction = ARR_ACTION_MONITOR_NEW_SEASONS,
 ) -> dict[str, str]:
     """Record finalization separately: files have already been removed."""
+    if action in {ARR_ACTION_LIST_EXCLUSION, ARR_ACTION_MONITOR_OR_EXCLUDE}:
+        try:
+            excluded = await client.exclude_ended_series_if_latest(
+                series_id, season_number
+            )
+            if excluded or action == ARR_ACTION_LIST_EXCLUSION:
+                return {"arr_list_exclusion": "added" if excluded else "skipped"}
+        except Exception as exc:
+            LOG.warning(f"Files removed; Sonarr list exclusion failed: {exc}")
+            return {
+                "arr_list_exclusion": "failed",
+                "arr_list_exclusion_error": summarize_error_message(str(exc))
+                or "List exclusion failed",
+            }
     try:
         enabled = await client.enable_new_seasons_if_latest(series_id, season_number)
         return {"sonarr_monitor_new_seasons": "enabled" if enabled else "skipped"}
@@ -10009,6 +10042,7 @@ async def _delete_movie_candidates(
                     already_processed = movie_id in seen_unmonitor_ids
                     seen_unmonitor_ids.add(movie_id)
                     keep_files = movie_arr_action.get(movie_id) == "unmonitor_only"
+                    exclusion_attributes: dict[str, str] = {}
 
                     result = await db.execute(
                         select(Movie)
@@ -10034,6 +10068,23 @@ async def _delete_movie_candidates(
                             }
 
                             if not keep_files:
+                                # Capture existing paths before removal: resolve_path only
+                                # returns paths that still exist.
+                                exclusion_source_paths = (
+                                    [
+                                        resolve_path(
+                                            v.path,
+                                            path_mappings,
+                                            service_type=v.service.value,
+                                        )
+                                        for v in movie.versions
+                                        if is_whole_movie
+                                        or v.id in unmonitor_target_version_ids
+                                    ]
+                                    if movie_arr_action.get(movie_id)
+                                    == ARR_ACTION_LIST_EXCLUSION
+                                    else []
+                                )
                                 # delete files from disk (only for candidate version(s)).
                                 # sibling_cleanup matches by file stem so it naturally scopes
                                 # to subtitles/nfo files belonging to that specific version.
@@ -10116,6 +10167,41 @@ async def _delete_movie_candidates(
                                             ),
                                             context=f"movie cleanup '{movie.title}'",
                                         )
+
+                                if (
+                                    movie_arr_action.get(movie_id)
+                                    == ARR_ACTION_LIST_EXCLUSION
+                                ):
+                                    try:
+                                        local_targets = exclusion_source_paths
+                                        if not local_targets or any(
+                                            p is None or p.exists()
+                                            for p in local_targets
+                                        ):
+                                            raise ValueError(
+                                                "Could not confirm movie files were removed; exclusion not added"
+                                            )
+                                        for info in movies_to_unmonitor:
+                                            if info["movie_id"] == movie_id:
+                                                await radarr_clients[
+                                                    info["config_id"]
+                                                ].add_import_exclusion(
+                                                    info["radarr_id"]
+                                                )
+                                        exclusion_attributes = {
+                                            "arr_list_exclusion": "added"
+                                        }
+                                    except Exception as exc:
+                                        LOG.warning(
+                                            f"Radarr list exclusion failed: {exc}"
+                                        )
+                                        exclusion_attributes = {
+                                            "arr_list_exclusion": "failed",
+                                            "arr_list_exclusion_error": summarize_error_message(
+                                                str(exc)
+                                            )
+                                            or "List exclusion failed",
+                                        }
 
                                 # only soft delete the movie record when all versions are removed
                                 if is_whole_movie:
@@ -10205,6 +10291,7 @@ async def _delete_movie_candidates(
                                 tmdb_id=movie_info.get("tmdb_id"),
                                 name=movie_info.get("title"),
                                 size=movie.size if movie else None,
+                                attributes=exclusion_attributes or None,
                                 action="unmonitored_only"
                                 if keep_files
                                 else "unmonitored",
@@ -10945,7 +11032,7 @@ async def _delete_season_candidates(
             candidate, season_rules_by_id, default_arr_delete_behavior
         )
 
-        monitor_new_seasons = cand_arr_action == ARR_ACTION_MONITOR_NEW_SEASONS
+        finalize_season_action = cand_arr_action in SEASON_FINALIZATION_ACTIONS
         monitoring_attributes: dict[str, str] = {}
 
         # try Sonarr first, preferring refs whose Sonarr path matches the media path
@@ -10989,13 +11076,13 @@ async def _delete_season_candidates(
                 "is removed",
             )
             continue
-        if monitor_new_seasons and proven_ref_ids:
+        if finalize_season_action and proven_ref_ids:
             ordered_refs = [ref for ref in ordered_refs if ref.id in proven_ref_ids]
         last_sonarr_error: str | None = None
 
         for ref in ordered_refs:
             ref_client = service_manager.get_sonarr(ref.service_config_id)
-            if ref_client is None and not monitor_new_seasons:
+            if ref_client is None and not finalize_season_action:
                 ref_client = service_manager.sonarr
             if ref_client is None or ref.arr_series_id is None:
                 continue
@@ -11032,7 +11119,7 @@ async def _delete_season_candidates(
                 continue
 
             try:
-                if monitor_new_seasons:
+                if finalize_season_action:
                     await ref_client.prepare_season_removal(
                         ref.arr_series_id, season_number
                     )
@@ -11128,7 +11215,7 @@ async def _delete_season_candidates(
                         f"S{season_number:02d}: {e} - will attempt media server fallback"
                     )
 
-            if deleted_via_sonarr or monitor_new_seasons:
+            if deleted_via_sonarr or finalize_season_action:
                 # Once removal starts, never switch to a different physical copy.
                 break
 
@@ -11141,7 +11228,7 @@ async def _delete_season_candidates(
                 refs,
                 sonarr_ref_config_id,
                 season_number,
-                preserve_unavailable=monitor_new_seasons,
+                preserve_unavailable=finalize_season_action,
             )
             if season_kept_by_other_copy:
                 LOG.info(
@@ -11203,7 +11290,7 @@ async def _delete_season_candidates(
 
         # fall back to media server if Sonarr failed or unavailable
         if not deleted_via_sonarr:
-            if monitor_new_seasons and sonarr_client is None:
+            if finalize_season_action and sonarr_client is None:
                 await _mark_candidate_delete_failure(
                     candidate.id,
                     last_sonarr_error
@@ -11244,7 +11331,7 @@ async def _delete_season_candidates(
             season_service_id = _season_media_server_id(
                 season, _main_media_server_type()
             )
-            if monitor_new_seasons and await _season_held_by_another_sonarr(
+            if finalize_season_action and await _season_held_by_another_sonarr(
                 refs, sonarr_ref_config_id, season_number, preserve_unavailable=True
             ):
                 await _mark_candidate_delete_failure(
@@ -11282,12 +11369,16 @@ async def _delete_season_candidates(
                 continue
 
         if (
-            monitor_new_seasons
+            finalize_season_action
             and sonarr_client is not None
             and sonarr_ref_id is not None
         ):
             monitoring_attributes = await _finalize_new_season_monitoring(
-                sonarr_client, sonarr_ref_id, season_number, sonarr_ref_config_id
+                sonarr_client,
+                sonarr_ref_id,
+                season_number,
+                sonarr_ref_config_id,
+                action=cand_arr_action,
             )
 
         # remove candidate and update series size in DB
@@ -11311,7 +11402,7 @@ async def _delete_season_candidates(
 
                 # reduce series stored size by the season's size
                 if season.size and not (
-                    monitor_new_seasons and season_kept_by_other_copy
+                    finalize_season_action and season_kept_by_other_copy
                 ):
                     series_result = await db.execute(
                         select(Series).where(Series.id == candidate.series_id)
@@ -11386,7 +11477,7 @@ async def _delete_season_candidates(
                     action="unmonitored_only"
                     if cand_arr_action == "unmonitor_only"
                     else "unmonitored"
-                    if cand_arr_action in {"unmonitor", ARR_ACTION_MONITOR_NEW_SEASONS}
+                    if cand_arr_action in UNMONITOR_LIKE_ARR_ACTIONS
                     else "deleted",
                 )
             )
@@ -11398,7 +11489,7 @@ async def _delete_season_candidates(
             action="unmonitored_only"
             if cand_arr_action == "unmonitor_only"
             else "unmonitored"
-            if cand_arr_action in {"unmonitor", ARR_ACTION_MONITOR_NEW_SEASONS}
+            if cand_arr_action in UNMONITOR_LIKE_ARR_ACTIONS
             else "deleted",
             media_type=MediaType.SERIES,
             title=series_obj.title,
@@ -12869,6 +12960,7 @@ async def _move_specific_candidates_impl(
     #### movie candidates ####
     movie_candidates = [c for c in candidates if c.media_type == MediaType.MOVIE]
     for candidate in movie_candidates:
+        exclusion_attributes: dict[str, str] = {}
         try:
             version = (
                 versions_by_id.get(candidate.movie_version_id)
@@ -13003,6 +13095,23 @@ async def _move_specific_candidates_impl(
                             await radarr_clients[config_id].unmonitor_movies(
                                 [arr_movie_id]
                             )
+                            if arr_action == ARR_ACTION_LIST_EXCLUSION:
+                                try:
+                                    await radarr_clients[
+                                        config_id
+                                    ].add_import_exclusion(arr_movie_id)
+                                    exclusion_attributes = {
+                                        "arr_list_exclusion": "added"
+                                    }
+                                except Exception as exc:
+                                    exclusion_attributes = {
+                                        "arr_list_exclusion": "failed",
+                                        "arr_list_exclusion_error": summarize_error_message(
+                                            str(exc)
+                                        )
+                                        or "List exclusion failed",
+                                    }
+                                    raise
                             LOG.info(
                                 f"move: unmonitored '{movie.title}' in Radarr "
                                 f"(config_id={config_id}, arr_id={arr_movie_id})"
@@ -13078,7 +13187,8 @@ async def _move_specific_candidates_impl(
                         path=version.path,
                         size=version.size,
                         attributes=_build_reclaim_history_attributes(
-                            movie_version=version
+                            movie_version=version,
+                            sonarr_monitoring=exclusion_attributes,
                         ),
                         action="moved",
                         destination_path=str(dest),
@@ -13323,7 +13433,7 @@ async def _move_series_candidates(
                         _get_arr_action(
                             candidate, rules_by_id, default_arr_delete_behavior
                         )
-                        == ARR_ACTION_MONITOR_NEW_SEASONS
+                        in SEASON_FINALIZATION_ACTIONS
                     ):
                         try:
                             season_move_source_files = [
@@ -13525,6 +13635,9 @@ async def _move_series_candidates(
                         prepared_ref.arr_series_id,
                         season.season_number,
                         prepared_ref.service_config_id,
+                        action=_get_arr_action(
+                            candidate, rules_by_id, default_arr_delete_behavior
+                        ),
                     )
                     move_sonarr_refresh.setdefault(
                         prepared_ref.service_config_id, set()

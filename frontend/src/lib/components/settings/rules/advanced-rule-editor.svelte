@@ -126,12 +126,16 @@
     | "delete"
     | "unmonitor"
     | "unmonitor_delete_monitor_new_seasons"
+    | "unmonitor_delete_list_exclusion"
+    | "unmonitor_delete_monitor_or_exclude"
     | "unmonitor_only"
     | "change_quality_profile";
   const ARR_ACTIONS: ArrAction[] = [
     "delete",
     "unmonitor",
     "unmonitor_delete_monitor_new_seasons",
+    "unmonitor_delete_list_exclusion",
+    "unmonitor_delete_monitor_or_exclude",
     "unmonitor_only",
     "change_quality_profile",
   ];
@@ -245,6 +249,12 @@
         return "Unmonitor + Delete File";
       case "unmonitor_delete_monitor_new_seasons":
         return "Unmonitor + Delete Files + Monitor New Seasons (only if latest season deleted)";
+      case "unmonitor_delete_list_exclusion":
+        return targetScope === "season"
+          ? "Unmonitor + Delete Files + Add List Exclusion (only if ended and latest season deleted)"
+          : "Unmonitor + Delete Files + Add List Exclusion";
+      case "unmonitor_delete_monitor_or_exclude":
+        return "Unmonitor + Delete Files + Monitor New Seasons OR Add List Exclusion";
       case "unmonitor_only":
         return "Unmonitor Only (Keep File)";
       case "change_quality_profile":
@@ -289,7 +299,11 @@
   $effect(() => {
     if (
       targetScope !== "season" &&
-      sonarrArrAction === "unmonitor_delete_monitor_new_seasons"
+      [
+        "unmonitor_delete_monitor_new_seasons",
+        "unmonitor_delete_list_exclusion",
+        "unmonitor_delete_monitor_or_exclude",
+      ].includes(sonarrArrAction)
     ) {
       sonarrArrAction = "unmonitor";
     }
@@ -1044,6 +1058,24 @@
                     {arrActionLabel("unmonitor_delete_monitor_new_seasons")}
                   </Select.Item>
                 {/if}
+                {#if targetScope === "season" || targetScope === "movie_version"}
+                  <Select.Item
+                    value="unmonitor_delete_list_exclusion"
+                    label={arrActionLabel("unmonitor_delete_list_exclusion")}
+                  >
+                    {arrActionLabel("unmonitor_delete_list_exclusion")}
+                  </Select.Item>
+                {/if}
+                {#if targetScope === "season"}
+                  <Select.Item
+                    value="unmonitor_delete_monitor_or_exclude"
+                    label={arrActionLabel(
+                      "unmonitor_delete_monitor_or_exclude",
+                    )}
+                  >
+                    {arrActionLabel("unmonitor_delete_monitor_or_exclude")}
+                  </Select.Item>
+                {/if}
                 <Select.Item
                   value="unmonitor_only"
                   label="Unmonitor Only (Keep File)"
@@ -1146,6 +1178,25 @@
               series monitoring and Monitor New Seasons. Announced seasons
               count; specials do not. Other seasons keep their monitoring
               settings. Requires an available Sonarr instance.
+            </p>
+          {:else if arrAction === "unmonitor_delete_list_exclusion" || arrAction === "unmonitor_delete_monitor_or_exclude"}
+            <p class="text-xs text-muted-foreground">
+              Keeps the entry in {selectedArrName} after removing files.
+              {#if targetScope === "season"}
+                Adds a list exclusion only when Sonarr reports the show as ended
+                and the removed season is the latest known regular season.
+                Announced seasons count; specials do not.
+                {#if arrAction === "unmonitor_delete_monitor_or_exclude"}
+                  Otherwise, enables series and new-season monitoring only when
+                  the latest regular season is removed. The ended branch takes
+                  precedence.
+                {/if}
+              {:else}
+                Unmonitors the movie and adds an import list exclusion after
+                file removal. Requires filesystem access on the Reclaimerr host.
+              {/if}
+              Applies to deletion and moves. Requires an available {selectedArrName}
+              instance.
             </p>
           {:else if arrAction === "unmonitor_only"}
             <p class="text-xs text-muted-foreground">

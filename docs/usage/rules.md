@@ -67,6 +67,8 @@ A cleanup-candidate rule chooses what its Radarr or Sonarr instance does once th
 | Delete | The Arr entry and its files are removed |
 | Unmonitor + Delete File | Files are deleted, the Arr entry stays as unmonitored |
 | Unmonitor + Delete Files + Monitor New Seasons (only if latest season deleted) | Sonarr season rules only: unmonitor and remove the season, retaining the show; enable series and new-season monitoring when the latest known regular season is removed |
+| Unmonitor + Delete Files + Add List Exclusion | Radarr movie rules: keep the unmonitored movie entry and add an import list exclusion after file removal. Sonarr season rules: exclude only when the show has ended and the latest regular season was removed |
+| Unmonitor + Delete Files + Monitor New Seasons OR Add List Exclusion | Sonarr season rules: exclude an ended show when its latest regular season is removed; otherwise enable series and new-season monitoring when the latest regular season is removed |
 | Unmonitor Only (Keep File) | The Arr entry is unmonitored and nothing is deleted |
 | Change Quality Profile | Nothing is removed. The Arr entry moves onto a different quality profile, optionally with a search queued |
 
@@ -80,7 +82,9 @@ The conditional Sonarr action counts the highest known regular season, including
 
 This action requires a reachable Sonarr instance and successful season unmonitoring before files are removed. If removal succeeds but enabling new-season monitoring fails, History shows a warning with Sonarr details. The completed removal is not retried; enable monitoring in Sonarr to resolve the warning. Whole-series and episode rules do not offer this action.
 
-If several matched rules disagree, the most conservative action wins: Change Quality Profile, then Unmonitor Only, then Unmonitor, then the conditional Monitor New Seasons action, then Delete. Ordinary Unmonitor takes precedence so another matched rule cannot unexpectedly enable monitoring.
+The exclusion actions keep the Arr entry and work with Move Instead of Delete. They add exclusions independently of the global **Add Arr Import List Exclusions on Delete** setting. Sonarr checks the live status and latest known regular season after removal; announced seasons count and specials do not. In the combined action, the ended-show exclusion branch wins and leaves the series unmonitored. Older seasons receive neither follow-up action. History records exclusion success, skipped safety checks, or failure. A failed exclusion does not trigger monitoring or repeat the file removal.
+
+If several matched rules disagree, the most conservative action wins: Change Quality Profile, then Unmonitor Only, then Unmonitor, then the conditional Monitor New Seasons action, then the combined Monitor New Seasons OR Add List Exclusion action, then Add List Exclusion, then Delete. Ordinary Unmonitor takes precedence so another matched rule cannot unexpectedly enable monitoring.
 
 Cleanup-candidate rules can target one or more Radarr or Sonarr instances. Reclaimerr applies the rule's managed tag to every selected instance where the item exists and limits ARR deletion or unmonitor actions to those selections. For movie versions, the synchronized Radarr movie folder must match the media-server file path before an explicitly selected instance is used. Configure instance-scoped Path Mappings in General Settings when the services report different container path prefixes. Leaving every instance unselected preserves automatic path-based routing across all matching active instances.
 

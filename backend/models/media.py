@@ -934,6 +934,8 @@ class ReclaimHistoryAttributes(BaseModel):
     dolby_vision: bool | None = None
     sonarr_monitor_new_seasons: Literal["enabled", "skipped", "failed"] | None = None
     sonarr_monitor_new_seasons_error: str | None = None
+    arr_list_exclusion: Literal["added", "skipped", "failed"] | None = None
+    arr_list_exclusion_error: str | None = None
 
 
 class ReclaimHistoryEntry(BaseModel):

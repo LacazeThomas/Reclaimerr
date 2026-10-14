@@ -4,6 +4,7 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -15,6 +16,7 @@ from backend.database.models import (
     MovieVersion,
     ProtectedMedia,
     ReclaimCandidate,
+    ReclaimHistory,
     ReclaimRule,
     ServiceConfig,
 )
@@ -160,9 +162,7 @@ async def _seed_movie_version_case(
 
     versions: list[MovieVersion] = []
     for index, path in enumerate(version_paths, start=1):
-        library_id = (
-            version_library_ids[index - 1] if version_library_ids else "lib-1"
-        )
+        library_id = version_library_ids[index - 1] if version_library_ids else "lib-1"
         version = MovieVersion(
             movie_id=movie.id,
             service=Service.PLEX,
@@ -1088,6 +1088,77 @@ def test_radarr_delete_scans_media_server_path(monkeypatch) -> None:
             # never a destructive media-server call - Radarr already did the work
             assert media.deleted_items == []
             assert media.scanned_paths == ["/plex/movies/Movie1/Movie1.mkv"]
+        finally:
+            await engine.dispose()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    "move,failure",
+    [
+        (False, None),
+        (False, "remove"),
+        (False, "exclude"),
+        (True, None),
+        (True, "exclude"),
+    ],
+)
+def test_list_exclusion_keeps_radarr_entry_after_removal(
+    monkeypatch, tmp_path, move, failure
+):
+    async def run():
+        movie_dir = tmp_path / "movies" / "Movie1"
+        movie_dir.mkdir(parents=True)
+        source = movie_dir / "Movie1.mkv"
+        source.write_bytes(b"movie")
+        engine, sessions = await _make_session(monkeypatch)
+        try:
+            async with sessions() as db:
+                _, candidates, config = await _seed_movie_version_case(
+                    db,
+                    version_paths=[str(source)],
+                    candidate_version_indexes=[0],
+                    arr_action=cleanup.ARR_ACTION_LIST_EXCLUSION,
+                    arr_movie_path=str(movie_dir),
+                    move_destination_movies=str(tmp_path / "archive"),
+                )
+            radarr = FakeRadarr()
+            excluded = []
+
+            async def exclude(movie_id):
+                assert not source.exists()
+                assert radarr.unmonitored == [[55]]
+                excluded.append(movie_id)
+                if failure == "exclude":
+                    raise RuntimeError("exclusion unavailable")
+
+            radarr.add_import_exclusion = exclude
+            _patch_services(monkeypatch, radarr, config)
+            if failure == "remove":
+                monkeypatch.setattr(cleanup, "sibling_cleanup", lambda *a, **k: None)
+            if move:
+                assert await cleanup._move_specific_candidates_impl(
+                    candidates, approved_by="tester"
+                ) == (1, 0)
+                assert (
+                    list((tmp_path / "archive").rglob("*.mkv"))[0].read_bytes()
+                    == b"movie"
+                )
+            else:
+                assert (
+                    await cleanup._delete_movie_candidates(
+                        restrict_to_ids=frozenset(candidates), approved_by="tester"
+                    )
+                    == 1
+                )
+            assert radarr.deleted == []
+            assert excluded == ([] if failure == "remove" else [55])
+            async with sessions() as db:
+                history = (await db.execute(select(ReclaimHistory))).scalar_one()
+                assert history.attributes["arr_list_exclusion"] == (
+                    "failed" if failure else "added"
+                )
         finally:
             await engine.dispose()
 

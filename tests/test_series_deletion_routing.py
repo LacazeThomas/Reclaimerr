@@ -1164,3 +1164,104 @@ def test_conditional_monitoring_requires_usable_sonarr_route(monkeypatch, route)
             await engine.dispose()
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    "action", [cleanup.ARR_ACTION_LIST_EXCLUSION, cleanup.ARR_ACTION_MONITOR_OR_EXCLUDE]
+)
+@pytest.mark.parametrize("failure", [None, "prepare", "delete", "exclude"])
+def test_season_exclusion_runs_only_after_successful_removal(
+    monkeypatch, action, failure
+):
+    async def run():
+        engine, sessions = await _make_session(monkeypatch)
+        try:
+            async with sessions() as db:
+                candidate_id, configs, ids = await _seed_series_case(
+                    db,
+                    target_scope="season",
+                    arr_action=action,
+                    media_server_fallback_enabled=False,
+                )
+            sonarr = MonitoringSonarr(ids[0], failure=failure)
+
+            async def exclude(series_id, season_number):
+                assert sonarr.events == ["prepare", "delete"]
+                sonarr.events.append("exclude")
+                if failure == "exclude":
+                    raise RuntimeError("exclusion unavailable")
+                return True
+
+            sonarr.exclude_ended_series_if_latest = exclude
+            _patch_services(monkeypatch, {configs[0]: sonarr}, FakeMediaServer())
+            count = await cleanup._delete_season_candidates(
+                restrict_to_ids=frozenset([candidate_id]), approved_by="tester"
+            )
+            success = failure not in {"prepare", "delete"}
+            assert count == int(success)
+            assert ("exclude" in sonarr.events) is success
+            assert "finalize" not in sonarr.events
+            assert sonarr.deleted_series == []
+            async with sessions() as db:
+                history = (await db.execute(select(ReclaimHistory))).scalars().all()
+                assert len(history) == int(success)
+                if success:
+                    assert history[0].action == "unmonitored"
+                    assert history[0].attributes["arr_list_exclusion"] == (
+                        "failed" if failure == "exclude" else "added"
+                    )
+        finally:
+            await engine.dispose()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    "action", [cleanup.ARR_ACTION_LIST_EXCLUSION, cleanup.ARR_ACTION_MONITOR_OR_EXCLUDE]
+)
+def test_season_move_adds_exclusion_after_source_removed(monkeypatch, tmp_path, action):
+    async def run():
+        series_dir = tmp_path / "Show"
+        season_dir = series_dir / "Season 01"
+        season_dir.mkdir(parents=True)
+        source = season_dir / "Show - S01E01.mkv"
+        source.write_bytes(b"episode")
+        archive = tmp_path / "archive"
+        engine, sessions = await _make_session(monkeypatch)
+        try:
+            async with sessions() as db:
+                candidate, configs, ids = await _seed_series_case(
+                    db,
+                    target_scope="season",
+                    arr_action=action,
+                    arr_series_paths=[str(series_dir)],
+                    arr_series_ids=[11],
+                    season_path=str(season_dir),
+                    episode_path=str(source),
+                    series_service_path=str(series_dir),
+                    move_destination_series=str(archive),
+                )
+            sonarr = MonitoringSonarr(ids[0])
+
+            async def exclude(series_id, season_number):
+                assert not source.exists()
+                assert sonarr.events == ["prepare"]
+                sonarr.events.append("exclude")
+                return True
+
+            sonarr.exclude_ended_series_if_latest = exclude
+            _patch_services(monkeypatch, {configs[0]: sonarr}, FakeMediaServer())
+            assert await cleanup._move_specific_candidates_impl(
+                [candidate], approved_by="tester"
+            ) == (1, 0)
+            assert sonarr.events == ["prepare", "exclude"]
+            assert sonarr.deleted_series == []
+            assert list(archive.rglob("*.mkv"))[0].read_bytes() == b"episode"
+            async with sessions() as db:
+                history = (await db.execute(select(ReclaimHistory))).scalar_one()
+                assert history.action == "moved"
+                assert history.attributes["arr_list_exclusion"] == "added"
+        finally:
+            await engine.dispose()
+
+    asyncio.run(run())

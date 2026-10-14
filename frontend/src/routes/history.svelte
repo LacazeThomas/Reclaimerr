@@ -964,6 +964,23 @@
                     <p class="text-sm text-muted-foreground">
                       {historyActorLabel(entry) ?? "Recorded reclaim activity"}
                     </p>
+                    {#if entry.attributes?.arr_list_exclusion === "failed"}
+                      <p class="text-sm text-amber-600 dark:text-amber-400">
+                        Files removed; list exclusion could not be added.
+                      </p>
+                      <p class="text-xs text-muted-foreground">
+                        {entry.attributes.arr_list_exclusion_error}
+                      </p>
+                    {:else if entry.attributes?.arr_list_exclusion === "added"}
+                      <p class="text-sm text-muted-foreground">
+                        Import list exclusion added
+                      </p>
+                    {:else if entry.attributes?.arr_list_exclusion === "skipped"}
+                      <p class="text-sm text-muted-foreground">
+                        List exclusion unchanged (requires an ended show and
+                        removal of its latest regular season)
+                      </p>
+                    {/if}
                     {#if entry.attributes?.sonarr_monitor_new_seasons === "failed"}
                       <p class="text-sm text-amber-600 dark:text-amber-400">
                         Files removed; new-season monitoring could not be
