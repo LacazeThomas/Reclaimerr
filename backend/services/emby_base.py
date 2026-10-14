@@ -179,6 +179,17 @@ class EmbyServiceBase:
         resp: JsonPayload = response.json()
         return resp
 
+    async def get_series_episode_order(
+        self, item_id: str, *, library_orders: dict[str, str | None] | None = None
+    ) -> str | None:
+        """Read the series display order; the API's empty default is aired."""
+        from backend.services.episode_ordering import normalize_episode_order
+
+        item = await self._make_request(f"Items/{item_id}", timeout=10)
+        if not isinstance(item, dict) or item.get("Type") != "Series":
+            return None
+        return normalize_episode_order(item.get("DisplayOrder") or "aired")
+
     async def get_live_sessions(self) -> PlaybackSnapshot:
         """Fetch live playback under the guard's total 10-second timeout."""
         response = await self.session.get(f"{self.service_url}/Sessions", timeout=10)

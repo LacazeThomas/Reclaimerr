@@ -9,6 +9,27 @@ Reclaimerr is configured through General Settings, service settings, and a small
 - **Tasks** - schedule scans, tagging, syncs, and optional auto-deletion
 - **Notifications** - configure Apprise destinations, and an instance-wide SMTP server so users can be notified at their account email address
 
+## Sonarr versions and episode ordering
+
+Reclaimerr uses Sonarr's `/api/v3` API for Sonarr v3, v4, and the v5 beta. Sonarr
+v5 retains this API but marks it deprecated. Read-only checks against v5.0.0.2569
+verified series, episode inventory, files, and import dates; mutation contracts
+are covered by offline tests rather than live deletion tests.
+
+Set Sonarr and your media servers to the same episode order. Reclaimerr recognizes
+aired/official, DVD, and absolute ordering. Plex show overrides take precedence
+over library defaults; Jellyfin and Emby use the series display order. Matching
+supported orders are allowed, including DVD. Other streaming or alternate order
+identifiers are treated as unknown until their numbering equivalence is supported.
+
+Number-based cleanup is blocked when orders differ or cannot be verified. This
+includes season and episode actions, plus whole-show actions whose rules depend
+on watch data, episode inventory, or Sonarr import dates. The candidate's error
+identifies the affected instance. Correct the ordering, run **Sync Media**, and
+retry. Reclaimerr does not change server settings or translate historical episode
+numbers. Independent whole-series rules, such as title or year conditions, remain
+available.
+
 ## Important Environment Variables
 
 | Variable | Purpose |

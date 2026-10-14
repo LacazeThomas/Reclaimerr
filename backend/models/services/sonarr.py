@@ -32,6 +32,7 @@ class SonarrSeries:
     seasons: list[SonarrSeason]
     tags: list[int]
     raw: Mapping[str, Any] | None = None
+    season_type: str | None = None
 
     def __repr__(self) -> str:
         return (
