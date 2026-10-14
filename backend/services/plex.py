@@ -1100,6 +1100,10 @@ class PlexService:
         try:
             # plex's scan endpoint with path parameter scans the specific path
             # we need to find the section that contains this path first
+            scan_path = normalize_fpath(item_path)
+            if not scan_path:
+                return False
+            scan_path = scan_path.rstrip("/")
             sections = await self.get_library_sections()
 
             # try to find which section this path belongs to by checking location paths
@@ -1108,34 +1112,25 @@ class PlexService:
                 if not section_id:
                     continue
 
-                # get section details to check locations
-                section_details, _ = await self._make_request(
-                    f"library/sections/{section_id}",
-                    timeout=60,
-                )
-                media_container = (
-                    section_details.get("MediaContainer", {})
-                    if isinstance(section_details, dict)
-                    else {}
-                )
-                directories = (
-                    media_container.get("Directory", [])
-                    if isinstance(media_container, dict)
-                    else []
-                )
-                if not directories:
+                # /library/sections includes roots; the per-section endpoint
+                # returns browse views rather than filesystem locations.
+                locations = section.get("Location", [])
+                if not isinstance(locations, list):
                     continue
 
-                locations = (
-                    directories[0].get("Location", [])
-                    if isinstance(directories, list) and directories
-                    else []
-                )
-
-                # check if item_path is within any of this section's locations
                 for location in locations:
-                    location_path = location.get("path", "")
-                    if item_path.startswith(location_path):
+                    if not isinstance(location, dict):
+                        continue
+                    location_path = location.get("path")
+                    if not isinstance(location_path, str):
+                        continue
+                    location_path = normalize_fpath(location_path)
+                    if not location_path:
+                        continue
+                    location_path = location_path.rstrip("/")
+                    if scan_path == location_path or scan_path.startswith(
+                        location_path + "/"
+                    ):
                         # found the right section, trigger scan with specific path
                         response = await self.session.get(
                             f"{self.plex_url}/library/sections/{section_id}/refresh",
