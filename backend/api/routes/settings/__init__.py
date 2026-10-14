@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from .backups import router as backups_router
 from .general import router as general_router
 from .integrations import router as integrations_router
+from .login_background import router as login_background_router
 from .logs import router as logs_router
 from .notifications import router as notifications_router
 from .oidc import router as oidc_router
@@ -18,3 +19,5 @@ router.include_router(services_router)
 router.include_router(notifications_router)
 router.include_router(oidc_router)
 router.include_router(smtp_router)
+
+router.include_router(login_background_router)

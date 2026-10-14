@@ -21,6 +21,8 @@
   import EmbySVG from "$lib/components/svgs/emby-svg.svelte";
   import { get_api } from "$lib/api";
   import { shuffleArray } from "$lib/utils/array";
+  import { createLoginBackgroundPlayer } from "$lib/utils/login-background";
+  import type { LoginBackground } from "$lib/types/login-background";
   import { TOP_RATED_BACKDROPS } from "$lib/misc/tmdb-images";
 
   type LoginMethod = "local" | "media" | "sso";
@@ -110,9 +112,10 @@
 
   const TMDB_BASE_URL_ORIGINAL = "https://image.tmdb.org/t/p/original";
   const TMDB_BASE_URL_W1280 = "https://image.tmdb.org/t/p/w1280";
-  const RANDOM_BACKGROUND_IMG_INTERVAL = 5000;
   let imageBaseUrl = TMDB_BASE_URL_ORIGINAL;
-  let refreshInterval: number | null = null;
+  let backgroundPlayer: ReturnType<typeof createLoginBackgroundPlayer> | null =
+    null;
+  let destroyed = false;
   let authPopup: Window | null = null;
   let authPopupCompleted = false;
   let authChannel: BroadcastChannel | null = null;
@@ -128,7 +131,6 @@
   let authHandoffTimer: number | null = null;
   let authWaiting = $state(false);
   let overlay: HTMLElement | null;
-  let backDropUrls: string[] = [];
 
   let container: HTMLElement;
   let observer: ResizeObserver;
@@ -553,34 +555,19 @@
     }
   };
 
-  const setRandomBackgroundImage = async () => {
+  const getDefaultBackgroundUrls = async (): Promise<string[]> => {
+    let backdrops: string[];
     try {
-      if (backDropUrls.length === 0) {
-        try {
-          const response = await get_api<{ backdrops: string[] | null }>(
-            "/api/info/random-backdrop",
-          );
-          backDropUrls =
-            response.backdrops ?? shuffleArray([...TOP_RATED_BACKDROPS]);
-        } catch {
-          backDropUrls = shuffleArray([...TOP_RATED_BACKDROPS]);
-        }
-      }
-
-      const imageUrl = backDropUrls.shift();
-      if (overlay) {
-        overlay.style.opacity = "0";
-        setTimeout(() => {
-          if (!overlay) return;
-          if (imageUrl) {
-            overlay.style.backgroundImage = `url(${imageBaseUrl + imageUrl})`;
-          }
-          overlay.style.opacity = "1";
-        }, 500);
-      }
-    } catch (err) {
-      console.error("Failed to fetch background image:", err);
+      const response = await get_api<{ backdrops: string[] | null }>(
+        "/api/info/random-backdrop",
+      );
+      backdrops = response.backdrops?.length
+        ? response.backdrops
+        : shuffleArray([...TOP_RATED_BACKDROPS]);
+    } catch {
+      backdrops = shuffleArray([...TOP_RATED_BACKDROPS]);
     }
+    return backdrops.map((path) => imageBaseUrl + path);
   };
 
   onMount(async () => {
@@ -608,27 +595,39 @@
       authChannel = null;
     }
 
-    await loadLoginOptions();
+    void loadLoginOptions();
 
     overlay = document.getElementById("login-bg-overlay");
     container = (overlay?.parentElement as HTMLElement) || document.body;
+    updateBaseUrl(container.clientWidth);
     observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        updateBaseUrl(entry.contentRect.width);
-        setRandomBackgroundImage();
-      }
+      for (const entry of entries) updateBaseUrl(entry.contentRect.width);
     });
-    if (container) observer.observe(container);
+    observer.observe(container);
 
-    await setRandomBackgroundImage();
-    refreshInterval = window.setInterval(
-      setRandomBackgroundImage,
-      RANDOM_BACKGROUND_IMG_INTERVAL,
+    let background: LoginBackground;
+    try {
+      background = await get_api<LoginBackground>("/api/info/login-background");
+    } catch {
+      background = {
+        mode: "default",
+        urls: [],
+        interval_seconds: 5,
+        image_url: null,
+      };
+    }
+    if (destroyed || !overlay) return;
+    backgroundPlayer = createLoginBackgroundPlayer(
+      overlay,
+      background,
+      getDefaultBackgroundUrls,
     );
+    void backgroundPlayer.start();
   });
 
   onDestroy(() => {
-    if (refreshInterval) clearInterval(refreshInterval);
+    destroyed = true;
+    backgroundPlayer?.stop();
     stopAuthPolling();
     closeAuthPopup();
     window.removeEventListener("message", handleAuthMessage);

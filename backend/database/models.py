@@ -373,6 +373,12 @@ class GeneralSettings(Base):
         Integer, primary_key=True, init=False, autoincrement=True
     )
 
+    # Instance-wide login appearance, managed by its own settings endpoints.
+    login_background_mode: Mapped[str] = mapped_column(String(16), default="default")
+    login_background_urls: Mapped[list[str]] = mapped_column(JSON, default_factory=list)
+    login_background_path: Mapped[str | None] = mapped_column(String(255), default=None)
+    login_background_interval: Mapped[int] = mapped_column(Integer, default=5)
+
     # cleanup and tagging settings
     worker_poll_min_seconds: Mapped[float | None] = mapped_column(Float, default=None)
     worker_poll_max_seconds: Mapped[float | None] = mapped_column(Float, default=None)

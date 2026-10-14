@@ -48,6 +48,18 @@ Email notifications are configured under Settings - Notifications, in the **Emai
 
 Application URL is configured in General Settings. It is used for Plex and OIDC callback generation behind a reverse proxy, and it is what lets notifications link back into Reclaimerr. When it is unset, notifications are still delivered but contain no links.
 
+## Login Background
+
+Administrators can customize the instance-wide sign-in screen under **Settings → General → Login background**:
+
+- **Default rotating backgrounds** keeps the existing media backdrops.
+- **Uploaded image** uses one static JPEG, PNG, or WebP. Uploads can be up to 10 MB and 25 million pixels; they are resized to fit within 3840 × 2160 and stored under the configured static directory in `login-backgrounds/`.
+- **Custom image URLs** replaces the default rotation with up to 50 direct HTTP or HTTPS image URLs, one per line. A single URL stays static; multiple URLs rotate in the listed order.
+
+The rotation interval can be set from 5 to 300 seconds. Click **Save login background** to apply the selected source, URLs, and interval. Uploading or replacing a file stores it immediately; removing an active uploaded image restores the default backgrounds.
+
+The dark overlay remains in place. Images that fail to load are skipped, and the default backgrounds are used if no custom image loads. URL images load directly in visitors' browsers, so their hosts must allow image embedding. Use HTTPS image URLs when Reclaimerr is served over HTTPS. Login artwork and configured URLs are available before sign-in.
+
 ## Login Methods and Recovery
 
 Administrators can choose **Local**, **Media**, and **SSO** under **Settings → Authentication → Login Methods**. All are allowed by default; Media and SSO only appear on the login page when their providers are configured. Disabled methods reject new sign-ins through the API as well as disappearing from the page. Existing sessions stay signed in. These controls do not change API-token access or trusted proxy authentication.

@@ -23,6 +23,7 @@
     type RequesterWatchUserMapping,
   } from "$lib/types/shared";
   import Notice from "$lib/components/notice.svelte";
+  import LoginBackgroundSettings from "$lib/components/settings/general/login-background.svelte";
   import DatabaseBackups from "$lib/components/settings/general/database-backups.svelte";
   import { auth } from "$lib/stores/auth";
   import {
@@ -575,6 +576,10 @@
       <Spinner class="w-12 h-12 text-primary" />
     </div>
   {:else}
+    {#if isAdmin}
+      <LoginBackgroundSettings />
+    {/if}
+
     <!-- worker polling -->
     <div class="bg-muted/50 border rounded-lg p-4 shadow-sm mt-6">
       <h3 class="font-semibold text-foreground items-center">Worker polling</h3>
