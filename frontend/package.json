@@ -1,6 +1,6 @@
 {
   "name": "reclaimerr-web",
-  "version": "0.5.7-beta.1",
+  "version": "0.5.7",
   "type": "module",
   "scripts": {
     "test:rule-presets": "node --test src/lib/components/settings/rules/rule-presets.test.js",
