@@ -497,6 +497,8 @@ export interface NotificationEmailStatus {
 
 export interface OIDCSettings {
   enabled: boolean;
+  sso_tab_label: string;
+  sso_button_label: string;
   issuer_url: string;
   client_id: string;
   scopes: string;

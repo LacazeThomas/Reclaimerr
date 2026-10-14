@@ -244,6 +244,8 @@ class AuthResponse(BaseModel):
 
 class OIDCAuthStatusResponse(BaseModel):
     enabled: bool
+    sso_tab_label: str = "SSO"
+    sso_button_label: str = "Sign In with SSO"
 
 
 class MediaAuthProvider(BaseModel):

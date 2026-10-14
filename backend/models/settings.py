@@ -563,6 +563,8 @@ class GeneralSettingsResponse(BaseModel):
 
 class OIDCSettingsResponse(BaseModel):
     enabled: bool = False
+    sso_tab_label: str = Field(default="", max_length=16)
+    sso_button_label: str = Field(default="", max_length=64)
     issuer_url: str = ""
     client_id: str = ""
     scopes: str = "openid profile email"
@@ -574,6 +576,11 @@ class OIDCSettingsResponse(BaseModel):
     client_secret_configured: bool = False
     updated_at: datetime | None = None
     updated_by: User | None = None
+
+    @field_validator("sso_tab_label", "sso_button_label", mode="before")
+    @classmethod
+    def normalize_sso_labels(cls, value: Any) -> Any:
+        return value.strip() if isinstance(value, str) else value
 
     @model_validator(mode="after")
     def sanitize_fields(self) -> OIDCSettingsResponse:
@@ -591,6 +598,8 @@ class OIDCSettingsResponse(BaseModel):
 
 class OIDCSettingsUpdate(BaseModel):
     enabled: bool = False
+    sso_tab_label: str = Field(default="", max_length=16)
+    sso_button_label: str = Field(default="", max_length=64)
     issuer_url: str = ""
     client_id: str = ""
     client_secret: str | None = None  # None = keep existing secret
@@ -600,6 +609,11 @@ class OIDCSettingsUpdate(BaseModel):
         "client_secret_basic"
     )
     redirect_uri_override: str | None = None
+
+    @field_validator("sso_tab_label", "sso_button_label", mode="before")
+    @classmethod
+    def normalize_sso_labels(cls, value: Any) -> Any:
+        return value.strip() if isinstance(value, str) else value
 
     @model_validator(mode="after")
     def sanitize_fields(self) -> OIDCSettingsUpdate:

@@ -561,7 +561,13 @@ async def oidc_auth_status(
 ) -> OIDCAuthStatusResponse:
     result = await db.execute(select(OIDCSettings))
     settings_row = result.scalars().first()
-    return OIDCAuthStatusResponse(enabled=_oidc_enabled(settings_row))
+    return OIDCAuthStatusResponse(
+        enabled=_oidc_enabled(settings_row),
+        sso_tab_label=(settings_row.sso_tab_label.strip() if settings_row else "")
+        or "SSO",
+        sso_button_label=(settings_row.sso_button_label.strip() if settings_row else "")
+        or "Sign In with SSO",
+    )
 
 
 @router.get("/oidc/start")

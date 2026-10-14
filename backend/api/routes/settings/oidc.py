@@ -45,6 +45,8 @@ async def _get_or_create_oidc_settings(db: AsyncSession) -> OIDCSettings:
 def _to_response(settings_row: OIDCSettings) -> OIDCSettingsResponse:
     return OIDCSettingsResponse(
         enabled=settings_row.enabled,
+        sso_tab_label=settings_row.sso_tab_label,
+        sso_button_label=settings_row.sso_button_label,
         issuer_url=settings_row.issuer_url or "",
         client_id=settings_row.client_id or "",
         scopes=settings_row.scopes or "openid profile email",
@@ -119,6 +121,8 @@ async def update_oidc_settings(
     _validate_enabled_config(request, client_secret=resolved_secret)
 
     settings_row.enabled = request.enabled
+    settings_row.sso_tab_label = request.sso_tab_label
+    settings_row.sso_button_label = request.sso_button_label
     settings_row.issuer_url = request.issuer_url
     settings_row.client_id = request.client_id
     settings_row.scopes = normalize_scopes(request.scopes)

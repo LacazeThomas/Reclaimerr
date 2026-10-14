@@ -49,6 +49,8 @@
   let loginMethod = $state<LoginMethod>("local");
 
   let oidcEnabled = $state(false);
+  let ssoTabLabel = $state("SSO");
+  let ssoButtonLabel = $state("Sign In with SSO");
   let oidcLoading = $state(false);
   let oidcHovered = $state(false);
 
@@ -573,6 +575,9 @@
       if (response.ok) {
         const payload = await response.json();
         oidcEnabled = Boolean(payload?.enabled);
+        ssoTabLabel = payload?.sso_tab_label?.trim() || "SSO";
+        ssoButtonLabel =
+          payload?.sso_button_label?.trim() || "Sign In with SSO";
       }
     } catch {
       oidcEnabled = false;
@@ -723,11 +728,14 @@
                   {loginMethod === 'sso'
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground'}"
+                title={ssoTabLabel}
                 onclick={() => setLoginMethod("sso")}
                 disabled={isBusy}
               >
                 <Lock class="size-4" />
-                SSO
+                <span class="min-w-0 truncate" title={ssoTabLabel}>
+                  {ssoTabLabel}
+                </span>
               </button>
             {/if}
           </div>
@@ -881,7 +889,7 @@
             onmouseleave={() => (oidcHovered = false)}
             size="lg"
             class="flex justify-center w-full py-2 px-4 font-medium cursor-pointer
-              bg-primary hover:bg-primary-hover transition-colors"
+              bg-primary hover:bg-primary-hover transition-colors h-auto min-h-10"
             onclick={startOidcLogin}
           >
             {#if oidcHovered}
@@ -889,8 +897,8 @@
             {:else}
               <Lock class="size-5" />
             {/if}
-            <span class="font-medium">
-              {oidcLoading ? "Opening SSO..." : "Sign In with SSO"}
+            <span class="min-w-0 whitespace-normal break-words font-medium">
+              {oidcLoading ? `Opening ${ssoTabLabel}...` : ssoButtonLabel}
             </span>
           </Button>
         {/if}

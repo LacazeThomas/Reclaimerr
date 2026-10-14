@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Custom SSO login labels.** Optional **SSO tab text** and **SSO button text** under **Settings → Authentication**, with a live preview. Leave either field blank to keep the default “SSO” or “Sign In with SSO” text.
 - **Leaving Soon collections on every Emby user’s Home screen.** New **Home screen for all users** option under **Settings → General → Leaving Soon Collections → Visible on (Emby)**, off by default. Requires Emby Server 4.10 or newer. Movie and series rows update on each candidate sync, respect each user’s media access, and preserve their position and display preferences. Rows are removed before their collections become empty or are deleted, preventing a fallback to all movies, and return when candidates return. Turning the option off removes Reclaimerr’s rows on the next sync without changing other Home sections.
 - **Sonarr v5 beta episode-order safeguards.** Reclaimerr continues using `/api/v3` for Sonarr v3, v4, and v5 beta. Matching aired/official, DVD, and absolute orders are supported. Cleanup that relies on episode numbering is blocked when Sonarr and the media server use different orders, or the order cannot be verified. Checks honor the rule's selected Sonarr instances and Plex library defaults. Unsupported streaming-order identifiers remain blocked.
 

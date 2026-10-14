@@ -20,6 +20,8 @@
 
   const defaultSettings: OIDCSettings = {
     enabled: false,
+    sso_tab_label: "",
+    sso_button_label: "",
     issuer_url: "",
     client_id: "",
     scopes: "openid profile email",
@@ -47,6 +49,8 @@
 
   const buildPayload = () => ({
     enabled: oidcSettings.enabled,
+    sso_tab_label: oidcSettings.sso_tab_label,
+    sso_button_label: oidcSettings.sso_button_label,
     issuer_url: oidcSettings.issuer_url,
     client_id: oidcSettings.client_id,
     scopes: oidcSettings.scopes,
@@ -287,6 +291,69 @@
             Default callback URI:
             <code>{callbackPreview || "/api/auth/oidc/callback"}</code>
           </p>
+        </div>
+      </div>
+
+      <div class="border-t pt-4 space-y-4">
+        <div>
+          <h4 class="font-semibold text-foreground">SSO Login Labels</h4>
+          <p class="text-sm text-muted-foreground">
+            Customize the login page text. Leave either field blank to use its
+            default.
+          </p>
+        </div>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <Label for="ssoTabLabel" class="mb-2">SSO tab text (optional)</Label
+            >
+            <Input
+              id="ssoTabLabel"
+              type="text"
+              maxlength={16}
+              placeholder="SSO"
+              aria-describedby="ssoTabLabelHelp"
+              bind:value={oidcSettings.sso_tab_label}
+            />
+            <p id="ssoTabLabelHelp" class="text-xs text-muted-foreground mt-1">
+              Up to 16 characters. Keep it short to fit beside Local and Media.
+            </p>
+          </div>
+          <div>
+            <Label for="ssoButtonLabel" class="mb-2"
+              >SSO button text (optional)</Label
+            >
+            <Input
+              id="ssoButtonLabel"
+              type="text"
+              maxlength={64}
+              placeholder="Sign In with SSO"
+              aria-describedby="ssoButtonLabelHelp"
+              bind:value={oidcSettings.sso_button_label}
+            />
+            <p
+              id="ssoButtonLabelHelp"
+              class="text-xs text-muted-foreground mt-1"
+            >
+              Up to 64 characters, for example "Sign in with Authentik".
+            </p>
+          </div>
+        </div>
+        <div class="rounded-md border bg-background p-3 space-y-2">
+          <p class="text-xs text-muted-foreground">Preview</p>
+          <div class="flex items-center gap-2 text-sm">
+            <span class="text-muted-foreground">Local</span>
+            <span class="text-muted-foreground">Media</span>
+            <span
+              class="rounded-sm bg-primary px-3 py-2 text-primary-foreground"
+            >
+              {oidcSettings.sso_tab_label.trim() || "SSO"}
+            </span>
+          </div>
+          <div
+            class="rounded-md bg-primary px-4 py-2 text-center text-sm font-medium text-primary-foreground break-words"
+          >
+            {oidcSettings.sso_button_label.trim() || "Sign In with SSO"}
+          </div>
         </div>
       </div>
 
