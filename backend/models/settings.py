@@ -562,7 +562,12 @@ class GeneralSettingsResponse(BaseModel):
 
 
 class OIDCSettingsResponse(BaseModel):
+    media_login_configured: bool = False
+    local_recovery_active: bool = False
     enabled: bool = False
+    allow_local_login: bool = True
+    allow_media_login: bool = True
+    allow_sso_login: bool = True
     sso_tab_label: str = Field(default="", max_length=16)
     sso_button_label: str = Field(default="", max_length=64)
     issuer_url: str = ""
@@ -598,6 +603,9 @@ class OIDCSettingsResponse(BaseModel):
 
 class OIDCSettingsUpdate(BaseModel):
     enabled: bool = False
+    allow_local_login: bool = True
+    allow_media_login: bool = True
+    allow_sso_login: bool = True
     sso_tab_label: str = Field(default="", max_length=16)
     sso_button_label: str = Field(default="", max_length=64)
     issuer_url: str = ""

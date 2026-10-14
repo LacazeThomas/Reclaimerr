@@ -508,6 +508,9 @@ class OIDCSettings(Base):
     token_endpoint_auth_method: Mapped[str] = mapped_column(
         String(32), default="client_secret_basic"
     )
+    allow_local_login: Mapped[bool] = mapped_column(Boolean, default=True)
+    allow_media_login: Mapped[bool] = mapped_column(Boolean, default=True)
+    allow_sso_login: Mapped[bool] = mapped_column(Boolean, default=True)
     sso_tab_label: Mapped[str] = mapped_column(String(16), default="")
     sso_button_label: Mapped[str] = mapped_column(String(64), default="")
     redirect_uri_override: Mapped[str | None] = mapped_column(String(500), default=None)

@@ -495,8 +495,20 @@ export interface NotificationEmailStatus {
   already_configured: boolean;
 }
 
+export interface LoginMethodsResponse {
+  local_enabled: boolean;
+  media_enabled: boolean;
+  sso_enabled: boolean;
+  local_recovery_active: boolean;
+}
+
 export interface OIDCSettings {
   enabled: boolean;
+  allow_local_login: boolean;
+  allow_media_login: boolean;
+  allow_sso_login: boolean;
+  media_login_configured: boolean;
+  local_recovery_active: boolean;
   sso_tab_label: string;
   sso_button_label: string;
   issuer_url: string;

@@ -20,6 +20,11 @@
 
   const defaultSettings: OIDCSettings = {
     enabled: false,
+    allow_local_login: true,
+    allow_media_login: true,
+    allow_sso_login: true,
+    media_login_configured: false,
+    local_recovery_active: false,
     sso_tab_label: "",
     sso_button_label: "",
     issuer_url: "",
@@ -33,11 +38,29 @@
 
   let loading = $state(true);
   let saving = $state(false);
+  let loadFailed = $state(false);
   let testing = $state(false);
   let oidcSettings = $state<OIDCSettings>({ ...defaultSettings });
   let clientSecret = $state("");
   let callbackPreview = $state("");
   let applicationUrl = $state("");
+
+  const ssoConfigured = $derived(
+    oidcSettings.enabled &&
+      Boolean(oidcSettings.issuer_url.trim()) &&
+      Boolean(oidcSettings.client_id.trim()) &&
+      Boolean(clientSecret.trim() || oidcSettings.client_secret_configured),
+  );
+  const hasUsableLogin = $derived(
+    oidcSettings.allow_local_login ||
+      (oidcSettings.allow_media_login && oidcSettings.media_login_configured) ||
+      (oidcSettings.allow_sso_login && ssoConfigured),
+  );
+  const restoreLoginDefaults = () => {
+    oidcSettings.allow_local_login = true;
+    oidcSettings.allow_media_login = true;
+    oidcSettings.allow_sso_login = true;
+  };
 
   const updateCallbackPreview = () => {
     if (typeof window === "undefined") {
@@ -49,6 +72,9 @@
 
   const buildPayload = () => ({
     enabled: oidcSettings.enabled,
+    allow_local_login: oidcSettings.allow_local_login,
+    allow_media_login: oidcSettings.allow_media_login,
+    allow_sso_login: oidcSettings.allow_sso_login,
     sso_tab_label: oidcSettings.sso_tab_label,
     sso_button_label: oidcSettings.sso_button_label,
     issuer_url: oidcSettings.issuer_url,
@@ -61,6 +87,8 @@
   });
 
   const loadSettings = async () => {
+    loading = true;
+    loadFailed = false;
     try {
       const response = await get_api<OIDCSettings>("/api/settings/oidc");
       oidcSettings = {
@@ -70,6 +98,7 @@
       clientSecret = "";
       updateCallbackPreview();
     } catch (error) {
+      loadFailed = true;
       toast.error(
         `Failed to load authentication settings: ${error instanceof Error ? error.message : String(error)}`,
         { duration: 10000 },
@@ -80,6 +109,7 @@
   };
 
   const saveSettings = async () => {
+    if (!hasUsableLogin || loadFailed) return;
     saving = true;
     try {
       const response = await put_api<OIDCSettings>(
@@ -144,8 +174,8 @@
       Authentication
     </h2>
     <p class="text-sm text-muted-foreground mt-1">
-      Configure optional OpenID Connect single sign on. Local username/password
-      login remains available as a fallback.
+      Choose the allowed login methods and configure optional OpenID Connect
+      single sign on.
     </p>
   </div>
 
@@ -153,7 +183,109 @@
     <div class="flex justify-center py-8">
       <Spinner class="w-12 h-12 text-primary" />
     </div>
+  {:else if loadFailed}
+    <p class="text-sm text-destructive">
+      Authentication settings could not be loaded.
+    </p>
+    <Button onclick={loadSettings}>Retry</Button>
   {:else}
+    <div class="bg-muted/50 border rounded-lg p-4 shadow-sm space-y-4">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <h3 class="font-semibold text-foreground">Login Methods</h3>
+          <p class="text-sm text-muted-foreground">
+            Choose what appears on the login page. Disabled methods also reject
+            new sign-ins.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onclick={restoreLoginDefaults}
+          disabled={saving}
+        >
+          Restore defaults
+        </Button>
+      </div>
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <Label for="allowLocalLogin">Local login</Label>
+          <p class="text-sm text-muted-foreground">
+            Reclaimerr username or email and password.
+          </p>
+        </div>
+        <Switch
+          id="allowLocalLogin"
+          bind:checked={oidcSettings.allow_local_login}
+          disabled={saving}
+        />
+      </div>
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <Label for="allowMediaLogin">Media login</Label>
+          <p class="text-sm text-muted-foreground">
+            Plex, Jellyfin, or Emby accounts.
+            {#if !oidcSettings.media_login_configured}Configure an enabled media
+              server first.{/if}
+          </p>
+        </div>
+        <Switch
+          id="allowMediaLogin"
+          bind:checked={oidcSettings.allow_media_login}
+          disabled={saving}
+        />
+      </div>
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <Label for="allowSsoLogin">SSO login</Label>
+          <p class="text-sm text-muted-foreground">
+            OpenID Connect provider.
+            {#if !ssoConfigured}Configure and enable the provider below first.{/if}
+          </p>
+        </div>
+        <Switch
+          id="allowSsoLogin"
+          bind:checked={oidcSettings.allow_sso_login}
+          disabled={saving}
+        />
+      </div>
+      {#if !hasUsableLogin}
+        <p role="alert" class="text-sm text-destructive">
+          Keep at least one configured login method enabled before saving.
+        </p>
+      {/if}
+      {#if !oidcSettings.allow_local_login}
+        <p class="text-sm text-muted-foreground">
+          Test that your admin account can sign in with an allowed method before
+          signing out.
+        </p>
+      {/if}
+      {#if oidcSettings.local_recovery_active}
+        <p
+          role="status"
+          class="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm"
+        >
+          Local login recovery is active. Remove AUTH_FORCE_LOCAL_LOGIN and
+          restart after saving a working login method.
+        </p>
+      {/if}
+      <details class="text-sm text-muted-foreground">
+        <summary class="cursor-pointer font-medium text-foreground"
+          >Recover access outside the app</summary
+        >
+        <p class="mt-2">
+          Set <code>AUTH_FORCE_LOCAL_LOGIN=true</code> in your environment or .env
+          file and restart Reclaimerr. Sign in with an existing local admin username
+          and password, restore the login settings, then remove the variable and restart.
+          This does not reset passwords. Existing sessions remain signed in when methods
+          change.
+        </p>
+      </details>
+      <p class="text-xs text-muted-foreground">
+        Use Save below to apply login methods and provider settings together.
+      </p>
+    </div>
+
     <div class="bg-muted/50 border rounded-lg p-4 shadow-sm space-y-4">
       <div class="flex items-center justify-between">
         <div>
@@ -369,7 +501,7 @@
         <Button
           class="cursor-pointer"
           onclick={saveSettings}
-          disabled={saving || testing}
+          disabled={saving || testing || !hasUsableLogin}
         >
           {#if saving}
             <Spinner class="size-4" />

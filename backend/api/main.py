@@ -50,7 +50,10 @@ from backend.core.worker import start_worker_pool
 from backend.database import async_db, close_db, init_db
 from backend.jobs.queue import reset_stale_jobs
 from backend.scheduler import shutdown_scheduler, start_scheduler
-from backend.services.admin_notices import sync_forward_auth_fallback_notice
+from backend.services.admin_notices import (
+    sync_forward_auth_fallback_notice,
+    sync_login_recovery_notice,
+)
 from backend.services.lifecycle_webhooks import recover_pending_webhook_deliveries
 from backend.services.watch_identity import seed_watch_user_aliases_if_empty
 from backend.utils.create_admin import create_initial_admin
@@ -125,6 +128,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     settings.forward_auth_enabled
                     and settings.forward_auth_allow_local_fallback
                 ),
+            )
+            await sync_login_recovery_notice(
+                session, recovery_active=settings.auth_force_local_login
             )
             await session.commit()
 

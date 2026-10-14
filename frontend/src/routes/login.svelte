@@ -3,6 +3,7 @@
   import { get } from "svelte/store";
   import { auth } from "$lib/stores/auth";
   import type {
+    LoginMethodsResponse,
     MediaAuthProvider,
     MediaAuthProvidersResponse,
   } from "$lib/types/shared";
@@ -48,6 +49,12 @@
   let loginHovered = $state(false);
   let loginMethod = $state<LoginMethod>("local");
 
+  let methodsLoading = $state(true);
+  let methodsLoadFailed = $state(false);
+  let localEnabled = $state(false);
+  let mediaEnabled = $state(false);
+  let ssoEnabled = $state(false);
+  let localRecoveryActive = $state(false);
   let oidcEnabled = $state(false);
   let ssoTabLabel = $state("SSO");
   let ssoButtonLabel = $state("Sign In with SSO");
@@ -77,10 +84,13 @@
     if (selectedMediaProvider.auth_mode === "redirect") return false;
     return !mediaUsername.trim() || !mediaPassword.trim();
   });
-  const hasMediaMethods = $derived.by(() => mediaProviders.length > 0);
-  const hasSsoMethod = $derived.by(() => oidcEnabled);
+  const hasMediaMethods = $derived.by(
+    () => mediaEnabled && mediaProviders.length > 0,
+  );
+  const hasSsoMethod = $derived.by(() => ssoEnabled && oidcEnabled);
   const visibleMethods = $derived.by(() => {
-    const methods: LoginMethod[] = ["local"];
+    const methods: LoginMethod[] = [];
+    if (localEnabled) methods.push("local");
     if (hasMediaMethods) methods.push("media");
     if (hasSsoMethod) methods.push("sso");
     return methods;
@@ -505,6 +515,36 @@
     }
   };
 
+  const loadLoginOptions = async () => {
+    methodsLoading = true;
+    methodsLoadFailed = false;
+    try {
+      const methods = await get_api<LoginMethodsResponse>("/api/auth/methods");
+      localEnabled = methods.local_enabled;
+      mediaEnabled = methods.media_enabled;
+      ssoEnabled = methods.sso_enabled;
+      localRecoveryActive = methods.local_recovery_active;
+      const [, sso] = await Promise.all([
+        loadMediaProviders(),
+        get_api<{
+          enabled: boolean;
+          sso_tab_label: string;
+          sso_button_label: string;
+        }>("/api/auth/oidc/status"),
+      ]);
+      oidcEnabled = sso.enabled;
+      ssoTabLabel = sso.sso_tab_label?.trim() || "SSO";
+      ssoButtonLabel = sso.sso_button_label?.trim() || "Sign In with SSO";
+      if (!visibleMethods.includes(loginMethod)) {
+        loginMethod = visibleMethods[0] ?? "local";
+      }
+    } catch {
+      methodsLoadFailed = true;
+    } finally {
+      methodsLoading = false;
+    }
+  };
+
   const updateBaseUrl = (width: number) => {
     if (width < 1920) {
       imageBaseUrl = TMDB_BASE_URL_W1280;
@@ -568,25 +608,7 @@
       authChannel = null;
     }
 
-    try {
-      const response = await fetch("/api/auth/oidc/status", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const payload = await response.json();
-        oidcEnabled = Boolean(payload?.enabled);
-        ssoTabLabel = payload?.sso_tab_label?.trim() || "SSO";
-        ssoButtonLabel =
-          payload?.sso_button_label?.trim() || "Sign In with SSO";
-      }
-    } catch {
-      oidcEnabled = false;
-    }
-
-    await loadMediaProviders();
-    if (!visibleMethods.includes(loginMethod)) {
-      loginMethod = visibleMethods[0] ?? "local";
-    }
+    await loadLoginOptions();
 
     overlay = document.getElementById("login-bg-overlay");
     container = (overlay?.parentElement as HTMLElement) || document.body;
@@ -672,235 +694,262 @@
           <h1 class="text-4xl font-bold text-foreground mb-2">Reclaimerr</h1>
         </div>
 
-        {#if visibleMethods.length > 1}
-          <div
-            class="mb-5 grid gap-1 rounded-md border border-border bg-background/70 p-1"
-            style={`grid-template-columns: repeat(${visibleMethods.length}, minmax(0, 1fr));`}
-          >
-            <!-- local -->
-            {#if visibleMethods.includes("local")}
-              <button
-                type="button"
-                class="flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm cursor-pointer
-                  {loginMethod === 'local'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'}"
-                onclick={() => setLoginMethod("local")}
-                disabled={isBusy}
-              >
-                <DoorClosed class="size-4" />
-                Local
-              </button>
-            {/if}
-
-            <!-- media server -->
-            {#if visibleMethods.includes("media")}
-              <button
-                type="button"
-                class="flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm cursor-pointer
-                  {loginMethod === 'media'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'}"
-                onclick={() => setLoginMethod("media")}
-                disabled={isBusy}
-              >
-                {#if mediaMethodIconTypes.length > 0}
-                  <span class="flex items-center gap-1">
-                    {#each mediaMethodIconTypes as serviceType}
-                      {@const Icon = mediaServiceIcon(serviceType)}
-                      <span class="inline-flex items-center justify-center">
-                        <Icon class="size-4" />
-                      </span>
-                    {/each}
-                  </span>
-                {:else}
-                  <Server class="size-4" />
-                {/if}
-                Media
-              </button>
-            {/if}
-
-            <!-- sso -->
-            {#if visibleMethods.includes("sso")}
-              <button
-                type="button"
-                class="flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm cursor-pointer
-                  {loginMethod === 'sso'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'}"
-                title={ssoTabLabel}
-                onclick={() => setLoginMethod("sso")}
-                disabled={isBusy}
-              >
-                <Lock class="size-4" />
-                <span class="min-w-0 truncate" title={ssoTabLabel}>
-                  {ssoTabLabel}
-                </span>
-              </button>
-            {/if}
+        {#if methodsLoading}
+          <p role="status" class="text-center text-sm text-muted-foreground">
+            Loading login methods...
+          </p>
+        {:else if methodsLoadFailed}
+          <div class="space-y-3 text-center">
+            <p role="alert" class="text-sm text-destructive">
+              Login methods could not be loaded.
+            </p>
+            <Button onclick={loadLoginOptions}>Retry</Button>
           </div>
-        {/if}
+        {:else if visibleMethods.length === 0}
+          <p role="alert" class="text-center text-sm text-destructive">
+            No login methods are available. Contact an administrator.
+          </p>
+        {:else}
+          {#if localRecoveryActive}
+            <p
+              role="status"
+              class="mb-4 text-center text-sm text-muted-foreground"
+            >
+              Local login recovery is enabled.
+            </p>
+          {/if}
+          {#if visibleMethods.length > 1}
+            <div
+              class="mb-5 grid gap-1 rounded-md border border-border bg-background/70 p-1"
+              style={`grid-template-columns: repeat(${visibleMethods.length}, minmax(0, 1fr));`}
+            >
+              <!-- local -->
+              {#if visibleMethods.includes("local")}
+                <button
+                  type="button"
+                  class="flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm cursor-pointer
+                  {loginMethod === 'local'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'}"
+                  onclick={() => setLoginMethod("local")}
+                  disabled={isBusy}
+                >
+                  <DoorClosed class="size-4" />
+                  Local
+                </button>
+              {/if}
 
-        <!-- handle local -->
-        {#if loginMethod === "local"}
-          <form
-            onsubmit={(e) => {
-              e.preventDefault();
-              handleLocalLogin();
-            }}
-            class="space-y-4"
-          >
-            <Input
-              id="username"
-              type="text"
-              bind:value={username}
-              onkeydown={handleKeydown}
-              disabled={isBusy}
-              required
-              class="input-hover-el"
-              placeholder="Username / Email"
-              autocomplete="username"
-              minlength={5}
-              maxlength={usernameMaxLength}
-            />
+              <!-- media server -->
+              {#if visibleMethods.includes("media")}
+                <button
+                  type="button"
+                  class="flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm cursor-pointer
+                  {loginMethod === 'media'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'}"
+                  onclick={() => setLoginMethod("media")}
+                  disabled={isBusy}
+                >
+                  {#if mediaMethodIconTypes.length > 0}
+                    <span class="flex items-center gap-1">
+                      {#each mediaMethodIconTypes as serviceType}
+                        {@const Icon = mediaServiceIcon(serviceType)}
+                        <span class="inline-flex items-center justify-center">
+                          <Icon class="size-4" />
+                        </span>
+                      {/each}
+                    </span>
+                  {:else}
+                    <Server class="size-4" />
+                  {/if}
+                  Media
+                </button>
+              {/if}
 
-            <Input
-              id="password"
-              type="password"
-              bind:value={password}
-              onkeydown={handleKeydown}
-              disabled={isBusy}
-              required
-              class="input-hover-el"
-              placeholder="Password"
-              autocomplete="current-password"
-              minlength={3}
-              maxlength={64}
-            />
+              <!-- sso -->
+              {#if visibleMethods.includes("sso")}
+                <button
+                  type="button"
+                  class="flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm cursor-pointer
+                  {loginMethod === 'sso'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground'}"
+                  title={ssoTabLabel}
+                  onclick={() => setLoginMethod("sso")}
+                  disabled={isBusy}
+                >
+                  <Lock class="size-4" />
+                  <span class="min-w-0 truncate" title={ssoTabLabel}>
+                    {ssoTabLabel}
+                  </span>
+                </button>
+              {/if}
+            </div>
+          {/if}
 
-            <Button
-              type="submit"
-              onmouseenter={() => (loginHovered = true)}
-              onmouseleave={() => (loginHovered = false)}
-              disabled={isBusy}
-              size="lg"
-              class="flex justify-center w-full py-2 px-4 bg-primary hover:bg-primary-hover
+          <!-- handle local -->
+          {#if loginMethod === "local" && localEnabled}
+            <form
+              onsubmit={(e) => {
+                e.preventDefault();
+                handleLocalLogin();
+              }}
+              class="space-y-4"
+            >
+              <Input
+                id="username"
+                type="text"
+                bind:value={username}
+                onkeydown={handleKeydown}
+                disabled={isBusy}
+                required
+                class="input-hover-el"
+                placeholder="Username / Email"
+                autocomplete="username"
+                minlength={5}
+                maxlength={usernameMaxLength}
+              />
+
+              <Input
+                id="password"
+                type="password"
+                bind:value={password}
+                onkeydown={handleKeydown}
+                disabled={isBusy}
+                required
+                class="input-hover-el"
+                placeholder="Password"
+                autocomplete="current-password"
+                minlength={3}
+                maxlength={64}
+              />
+
+              <Button
+                type="submit"
+                onmouseenter={() => (loginHovered = true)}
+                onmouseleave={() => (loginHovered = false)}
+                disabled={isBusy}
+                size="lg"
+                class="flex justify-center w-full py-2 px-4 bg-primary hover:bg-primary-hover
                 font-medium rounded-md transition-colors focus:ring-2 focus:ring-focus-ring
                 cursor-pointer"
-            >
-              {#if loginHovered}
-                <DoorOpen class="size-6" />
-              {:else}
-                <DoorClosed class="size-6" />
-              {/if}
-              <span class="font-medium"
-                >{localLoading ? "Signing in..." : "Sign In"}</span
               >
-            </Button>
-          </form>
-
-          <!-- handle media server -->
-        {:else if loginMethod === "media" && hasMediaMethods}
-          <form
-            onsubmit={(e) => {
-              e.preventDefault();
-              handleMediaLogin();
-            }}
-            class="space-y-4"
-          >
-            <Select.Root type="single" bind:value={mediaProviderId}>
-              <Select.Trigger class="w-full bg-background/80 input-hover-el">
-                {#if selectedMediaProvider}
-                  {@const Icon = mediaServiceIcon(
-                    selectedMediaProvider.service_type,
-                  )}
-                  <span class="flex items-center gap-2">
-                    <Icon class="size-4 shrink-0" />
-                    <span>{selectedMediaProvider.name}</span>
-                  </span>
+                {#if loginHovered}
+                  <DoorOpen class="size-6" />
                 {:else}
-                  Select Media Server
+                  <DoorClosed class="size-6" />
                 {/if}
-              </Select.Trigger>
-              <Select.Content>
-                {#each mediaProviders as provider}
-                  {@const Icon = mediaServiceIcon(provider.service_type)}
-                  <Select.Item
-                    value={String(provider.service_config_id)}
-                    label={provider.name}
-                  >
+                <span class="font-medium"
+                  >{localLoading ? "Signing in..." : "Sign In"}</span
+                >
+              </Button>
+            </form>
+
+            <!-- handle media server -->
+          {:else if loginMethod === "media" && hasMediaMethods}
+            <form
+              onsubmit={(e) => {
+                e.preventDefault();
+                handleMediaLogin();
+              }}
+              class="space-y-4"
+            >
+              <Select.Root type="single" bind:value={mediaProviderId}>
+                <Select.Trigger class="w-full bg-background/80 input-hover-el">
+                  {#if selectedMediaProvider}
+                    {@const Icon = mediaServiceIcon(
+                      selectedMediaProvider.service_type,
+                    )}
                     <span class="flex items-center gap-2">
                       <Icon class="size-4 shrink-0" />
-                      <span>{provider.name}</span>
+                      <span>{selectedMediaProvider.name}</span>
                     </span>
-                  </Select.Item>
-                {/each}
-              </Select.Content>
-            </Select.Root>
+                  {:else}
+                    Select Media Server
+                  {/if}
+                </Select.Trigger>
+                <Select.Content>
+                  {#each mediaProviders as provider}
+                    {@const Icon = mediaServiceIcon(provider.service_type)}
+                    <Select.Item
+                      value={String(provider.service_config_id)}
+                      label={provider.name}
+                    >
+                      <span class="flex items-center gap-2">
+                        <Icon class="size-4 shrink-0" />
+                        <span>{provider.name}</span>
+                      </span>
+                    </Select.Item>
+                  {/each}
+                </Select.Content>
+              </Select.Root>
 
-            {#if !selectedMediaIsRedirect}
-              <Input
-                type="text"
-                bind:value={mediaUsername}
-                onkeydown={handleMediaKeydown}
-                disabled={isBusy}
-                class="input-hover-el"
-                placeholder="Media Server Username"
-                autocomplete="username"
-              />
+              {#if !selectedMediaIsRedirect}
+                <Input
+                  type="text"
+                  bind:value={mediaUsername}
+                  onkeydown={handleMediaKeydown}
+                  disabled={isBusy}
+                  class="input-hover-el"
+                  placeholder="Media Server Username"
+                  autocomplete="username"
+                />
 
-              <Input
-                type="password"
-                bind:value={mediaPassword}
-                onkeydown={handleMediaKeydown}
-                disabled={isBusy}
-                class="input-hover-el"
-                placeholder="Media Server Password"
-                autocomplete="current-password"
-              />
-            {/if}
+                <Input
+                  type="password"
+                  bind:value={mediaPassword}
+                  onkeydown={handleMediaKeydown}
+                  disabled={isBusy}
+                  class="input-hover-el"
+                  placeholder="Media Server Password"
+                  autocomplete="current-password"
+                />
+              {/if}
 
-            <Button
-              type="submit"
-              disabled={mediaSignInDisabled || localLoading}
-              onmouseenter={() => (mediaHovered = true)}
-              onmouseleave={() => (mediaHovered = false)}
-              size="lg"
-              class="flex justify-center w-full py-2 px-4 bg-primary hover:bg-primary-hover
+              <Button
+                type="submit"
+                disabled={mediaSignInDisabled || localLoading}
+                onmouseenter={() => (mediaHovered = true)}
+                onmouseleave={() => (mediaHovered = false)}
+                size="lg"
+                class="flex justify-center w-full py-2 px-4 bg-primary hover:bg-primary-hover
                 font-medium rounded-md transition-colors focus:ring-2 focus:ring-focus-ring
                 cursor-pointer"
+              >
+                <Server class="size-5" />
+                <span class="font-medium">
+                  {#if selectedMediaIsRedirect}
+                    {mediaHovered ? "Continue to Plex" : "Sign In with Plex"}
+                  {:else}
+                    {mediaLoading
+                      ? "Signing in..."
+                      : "Sign In with Media Server"}
+                  {/if}
+                </span>
+              </Button>
+            </form>
+
+            <!-- sso -->
+          {:else if loginMethod === "sso" && hasSsoMethod}
+            <Button
+              disabled={isBusy}
+              onmouseenter={() => (oidcHovered = true)}
+              onmouseleave={() => (oidcHovered = false)}
+              size="lg"
+              class="flex justify-center w-full py-2 px-4 font-medium cursor-pointer
+              bg-primary hover:bg-primary-hover transition-colors h-auto min-h-10"
+              onclick={startOidcLogin}
             >
-              <Server class="size-5" />
-              <span class="font-medium">
-                {#if selectedMediaIsRedirect}
-                  {mediaHovered ? "Continue to Plex" : "Sign In with Plex"}
-                {:else}
-                  {mediaLoading ? "Signing in..." : "Sign In with Media Server"}
-                {/if}
+              {#if oidcHovered}
+                <LockOpen class="size-5" />
+              {:else}
+                <Lock class="size-5" />
+              {/if}
+              <span class="min-w-0 whitespace-normal break-words font-medium">
+                {oidcLoading ? `Opening ${ssoTabLabel}...` : ssoButtonLabel}
               </span>
             </Button>
-          </form>
-
-          <!-- sso -->
-        {:else if loginMethod === "sso" && hasSsoMethod}
-          <Button
-            disabled={isBusy}
-            onmouseenter={() => (oidcHovered = true)}
-            onmouseleave={() => (oidcHovered = false)}
-            size="lg"
-            class="flex justify-center w-full py-2 px-4 font-medium cursor-pointer
-              bg-primary hover:bg-primary-hover transition-colors h-auto min-h-10"
-            onclick={startOidcLogin}
-          >
-            {#if oidcHovered}
-              <LockOpen class="size-5" />
-            {:else}
-              <Lock class="size-5" />
-            {/if}
-            <span class="min-w-0 whitespace-normal break-words font-medium">
-              {oidcLoading ? `Opening ${ssoTabLabel}...` : ssoButtonLabel}
-            </span>
-          </Button>
+          {/if}
         {/if}
       </div>
     </div>

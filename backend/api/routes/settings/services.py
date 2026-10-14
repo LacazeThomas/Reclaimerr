@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio.session import AsyncSession
 from backend.core.auth import require_admin
 from backend.core.encryption import fer_decrypt, fer_encrypt
 from backend.core.logger import LOG
+from backend.core.login_policy import validate_saved_login_methods
 from backend.core.rule_actions import (
     get_arr_service_config_ids,
     normalize_arr_service_config_ids,
@@ -815,6 +816,9 @@ async def delete_service_settings(
             detail="Cannot delete the active main media server. Assign a different main server first.",
         )
 
+    if config.service_type in MEDIA_SERVERS:
+        await validate_saved_login_methods(db, excluded_media_id=config.id)
+
     service_type = config.service_type
     config_id = config.id
     affected_rules: list[dict[str, Any]] = []
@@ -1013,6 +1017,12 @@ async def _upsert_service_config(
             },
         )
         await db.execute(upsert_statement)
+    if data.service_type in MEDIA_SERVERS:
+        try:
+            await validate_saved_login_methods(db)
+        except HTTPException:
+            await db.rollback()
+            raise
     await db.commit()
     return data
 

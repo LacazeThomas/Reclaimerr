@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio.session import AsyncSession
 
 from backend.core.auth import require_admin
 from backend.core.encryption import fer_decrypt, fer_encrypt
+from backend.core.login_policy import validate_login_methods
 from backend.core.oidc import (
     OIDCConfigError,
     OIDCError,
@@ -18,6 +19,7 @@ from backend.core.oidc import (
     normalize_scopes,
     normalize_token_endpoint_auth_method,
 )
+from backend.core.settings import settings
 from backend.database import get_db
 from backend.database.models import OIDCSettings, User
 from backend.models.settings import (
@@ -25,6 +27,7 @@ from backend.models.settings import (
     OIDCSettingsUpdate,
     OIDCTestResponse,
 )
+from backend.services.media_auth import list_media_auth_providers
 
 router = APIRouter(tags=["settings", "oidc"])
 
@@ -42,9 +45,16 @@ async def _get_or_create_oidc_settings(db: AsyncSession) -> OIDCSettings:
     return created
 
 
-def _to_response(settings_row: OIDCSettings) -> OIDCSettingsResponse:
+async def _to_response(
+    settings_row: OIDCSettings, db: AsyncSession
+) -> OIDCSettingsResponse:
     return OIDCSettingsResponse(
         enabled=settings_row.enabled,
+        allow_local_login=settings_row.allow_local_login,
+        allow_media_login=settings_row.allow_media_login,
+        allow_sso_login=settings_row.allow_sso_login,
+        media_login_configured=bool(await list_media_auth_providers(db)),
+        local_recovery_active=settings.auth_force_local_login,
         sso_tab_label=settings_row.sso_tab_label,
         sso_button_label=settings_row.sso_button_label,
         issuer_url=settings_row.issuer_url or "",
@@ -105,7 +115,7 @@ async def get_oidc_settings(
     """Get OIDC settings. There is always exactly one settings row, so this will create it
     if it doesn't exist yet."""
     settings_row = await _get_or_create_oidc_settings(db)
-    return _to_response(settings_row)
+    return await _to_response(settings_row, db)
 
 
 @router.put("/oidc", response_model=OIDCSettingsResponse)
@@ -119,8 +129,23 @@ async def update_oidc_settings(
     settings_row = await _get_or_create_oidc_settings(db)
     resolved_secret = _resolve_client_secret(request, settings_row)
     _validate_enabled_config(request, client_secret=resolved_secret)
+    await validate_login_methods(
+        db,
+        allow_local=request.allow_local_login,
+        allow_media=request.allow_media_login,
+        allow_sso=request.allow_sso_login,
+        sso_configured=bool(
+            request.enabled
+            and request.issuer_url
+            and request.client_id
+            and resolved_secret
+        ),
+    )
 
     settings_row.enabled = request.enabled
+    settings_row.allow_local_login = request.allow_local_login
+    settings_row.allow_media_login = request.allow_media_login
+    settings_row.allow_sso_login = request.allow_sso_login
     settings_row.sso_tab_label = request.sso_tab_label
     settings_row.sso_button_label = request.sso_button_label
     settings_row.issuer_url = request.issuer_url
@@ -137,7 +162,7 @@ async def update_oidc_settings(
     db.add(settings_row)
     await db.commit()
     await db.refresh(settings_row)
-    return _to_response(settings_row)
+    return await _to_response(settings_row, db)
 
 
 @router.post("/oidc/test", response_model=OIDCTestResponse)

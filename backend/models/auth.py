@@ -242,6 +242,13 @@ class AuthResponse(BaseModel):
     user: UserInfo
 
 
+class LoginMethodsResponse(BaseModel):
+    local_enabled: bool = True
+    media_enabled: bool = True
+    sso_enabled: bool = True
+    local_recovery_active: bool = False
+
+
 class OIDCAuthStatusResponse(BaseModel):
     enabled: bool
     sso_tab_label: str = "SSO"
