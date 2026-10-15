@@ -209,12 +209,8 @@
 
   {#if favoritesIgnoreEnabled}
     <div class="mt-4 space-y-3">
-      <Label class="flex items-center gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          class="cursor-pointer"
-          bind:checked={favoritesProtectAllUsers}
-        />
+      <Label class="flex items-center gap-2 ">
+        <input type="checkbox" bind:checked={favoritesProtectAllUsers} />
         Protect favorites for all users
       </Label>
 
@@ -224,11 +220,7 @@
             <Label for="favoritesUsernames" class="mb-0">
               <span class="text-sm text-foreground">Usernames</span>
             </Label>
-            <Button
-              size="sm"
-              class="cursor-pointer gap-1"
-              onclick={toggleFavoritesUsersPanel}
-            >
+            <Button size="sm" class="gap-1" onclick={toggleFavoritesUsersPanel}>
               {#if favoritesUsersOpen}
                 <EyeOff class="size-4" />
               {:else}
@@ -261,7 +253,6 @@
               <div class="flex flex-wrap items-center gap-2">
                 <Button
                   size="sm"
-                  class="cursor-pointer"
                   onclick={() => loadFavoritesUsers(true)}
                   disabled={favoritesUsersLoading}
                 >
@@ -270,7 +261,6 @@
                 </Button>
                 <Button
                   size="sm"
-                  class="cursor-pointer"
                   onclick={copyFavoritesUsers}
                   disabled={favoritesUsers.length === 0}
                 >
@@ -279,7 +269,6 @@
                 </Button>
                 <Button
                   size="sm"
-                  class="cursor-pointer"
                   onclick={copyFavoritesOnlyUsers}
                   disabled={!favoritesUsers.some((item) => item.has_favorites)}
                 >
@@ -334,7 +323,7 @@
                           type="button"
                           size="sm"
                           variant="outline"
-                          class="cursor-pointer h-7 px-2 text-[11px]"
+                          class="h-7 px-2 text-[11px]"
                           onclick={() => copySingleUser(user.username)}
                         >
                           <Copy class="size-3" />
@@ -358,11 +347,7 @@
       <h4 class="text-sm font-medium text-foreground">
         Favorites Media Snapshot
       </h4>
-      <Button
-        size="sm"
-        class="cursor-pointer gap-1"
-        onclick={toggleFavoritesMediaPanel}
-      >
+      <Button size="sm" class="gap-1" onclick={toggleFavoritesMediaPanel}>
         {#if favoritesMediaOpen}
           <EyeOff class="size-4" />
         {:else}
@@ -439,7 +424,6 @@
 
           <Button
             size="icon-sm"
-            class="cursor-pointer"
             onclick={() => loadFavoritesMedia(1, true)}
             disabled={favoritesMediaLoading}
           >

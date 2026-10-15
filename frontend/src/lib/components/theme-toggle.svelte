@@ -12,7 +12,7 @@
   variant="ghost"
   size="icon"
   onclick={toggleMode}
-  class={"text-foreground cursor-pointer " + " " + className}
+  class={"text-foreground " + " " + className}
   aria-label="Toggle theme"
 >
   {#if mode.current === "dark"}

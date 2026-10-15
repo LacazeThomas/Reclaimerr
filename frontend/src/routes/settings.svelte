@@ -380,7 +380,7 @@
   let confirmTitle = $state("");
   let confirmDescription = $state("");
   let confirmActionLabel = $state("Confirm");
-  let confirmActionClass = $state("cursor-pointer hover");
+  let confirmActionClass = $state("hover");
   let confirmIntent = $state<ConfirmIntent | null>(null);
 
   type TracearrCandidate = {
@@ -455,8 +455,8 @@
     confirmDescription = options.description;
     confirmActionLabel = options.actionLabel;
     confirmActionClass = options.destructive
-      ? "cursor-pointer hover bg-destructive text-destructive-foreground hover:bg-destructive/90"
-      : "cursor-pointer hover";
+      ? "hover bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      : "hover";
     showConfirmDialog = true;
   };
 
@@ -958,7 +958,7 @@
               id="settings-tab-select"
               bind:value={activeTab}
               class="w-full px-4 py-3 bg-background border border-input rounded-lg text-foreground
-                     appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring
+                     appearance-none focus:outline-none focus:ring-2 focus:ring-ring
                      focus:border-transparent pr-10"
             >
               {#each filteredTabGroups as group}
@@ -1003,7 +1003,7 @@
               {#each group.tabs as tab}
                 <button
                   class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm transition-colors
-                    cursor-pointer
+
                     {activeTab === tab.id
                     ? 'bg-primary/10 text-primary font-medium'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
@@ -1073,7 +1073,7 @@
                 <div class="flex flex-wrap items-center gap-2">
                   <Button
                     size="sm"
-                    class="cursor-pointer bg-add/70 hover:bg-add/80"
+                    class="bg-add/70 hover:bg-add/80"
                     onclick={() => newArrInstance(activeTab)}
                   >
                     <Plus class="size-3.5" />
@@ -1081,7 +1081,7 @@
                   </Button>
                   <Button
                     size="sm"
-                    class="cursor-pointer bg-destructive/70 hover:bg-destructive/80"
+                    class="bg-destructive/70 hover:bg-destructive/80"
                     onclick={() => deleteArrInstance(activeTab)}
                     disabled={!serviceState[activeTab].config.id}
                   >
@@ -1134,7 +1134,7 @@
                   <Button
                     variant="outline"
                     size="sm"
-                    class="cursor-pointer gap-2"
+                    class="gap-2"
                     onclick={discoverTracearrServers}
                     disabled={discoveringTracearr ||
                       !serviceState[activeTab].config.baseUrl}
@@ -1237,7 +1237,7 @@
                 <Button
                   onclick={() => deleteArrInstance(activeTab)}
                   disabled={savingService || testingService}
-                  class="cursor-pointer gap-2 bg-destructive/80 hover:bg-destructive text-destructive-foreground"
+                  class="gap-2 bg-destructive/80 hover:bg-destructive text-destructive-foreground"
                 >
                   <Trash2 class="size-4" />
                   Delete
@@ -1247,7 +1247,7 @@
                 onclick={() => testServiceConnection(activeTab)}
                 disabled={testingService || savingService}
                 status={serviceTestStatus[activeTab]}
-                class="cursor-pointer gap-2"
+                class="gap-2"
                 size="default"
               >
                 Test
@@ -1255,7 +1255,7 @@
               <Button
                 onclick={() => saveServiceSettings(activeTab)}
                 disabled={savingService || testingService}
-                class="cursor-pointer gap-2"
+                class="gap-2"
               >
                 {#if savingService}
                   <Spinner class="size-4" />
@@ -1337,7 +1337,7 @@
     </AlertDialog.Header>
     <AlertDialog.Footer class="flex justify-end gap-3 pt-4">
       <AlertDialog.Cancel
-        class="cursor-pointer hover text-foreground bg-secondary"
+        class="hover text-foreground bg-secondary"
         onclick={closeConfirmDialog}
       >
         Cancel

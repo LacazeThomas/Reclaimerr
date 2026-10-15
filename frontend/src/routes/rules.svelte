@@ -569,7 +569,7 @@
               size="sm"
               onclick={runScanTaskNow}
               disabled={scanTaskActionInProgress}
-              class="cursor-pointer gap-2"
+              class="gap-2"
               title="Start cleanup candidate scan"
             >
               {#if scanTaskActionInProgress}
@@ -598,7 +598,7 @@
               variant="secondary"
               size="sm"
               onclick={() => fileInput.click()}
-              class="cursor-pointer gap-2"
+              class="gap-2"
             >
               <Upload class="size-4" />
               Import
@@ -608,16 +608,12 @@
               size="sm"
               onclick={() => exportRules(rules)}
               disabled={rules.length === 0}
-              class="cursor-pointer gap-2"
+              class="gap-2"
             >
               <Download class="size-4" />
               Export All
             </Button>
-            <Button
-              size="sm"
-              onclick={createNewRule}
-              class="cursor-pointer gap-2"
-            >
+            <Button size="sm" onclick={createNewRule} class="gap-2">
               <Plus class="size-4" />
               New Rule
             </Button>
@@ -625,7 +621,7 @@
               size="sm"
               variant="secondary"
               onclick={() => (showPresetPicker = true)}
-              class="cursor-pointer gap-2"
+              class="gap-2"
             >
               <ListChecks class="size-4" /> Add from preset
             </Button>
@@ -648,7 +644,7 @@
           </div>
           <Select.Root type="single" bind:value={statusFilter}>
             <Select.Trigger
-              class="w-36 bg-card text-card-foreground cursor-pointer"
+              class="w-36 bg-card text-card-foreground "
               aria-label="Filter rules by status"
             >
               {statusFilter === "enabled"
@@ -669,7 +665,7 @@
           </Select.Root>
           <Select.Root type="single" bind:value={scopeFilter}>
             <Select.Trigger
-              class="w-40 bg-card text-card-foreground cursor-pointer"
+              class="w-40 bg-card text-card-foreground "
               aria-label="Filter rules by scope"
             >
               {scopeOptions.find((option) => option.value === scopeFilter)
@@ -685,7 +681,7 @@
           </Select.Root>
           <Select.Root type="single" bind:value={outcomeFilter}>
             <Select.Trigger
-              class="w-40 bg-card text-card-foreground cursor-pointer"
+              class="w-40 bg-card text-card-foreground "
               aria-label="Filter rules by outcome"
             >
               {outcomeFilter === "protect"
@@ -707,11 +703,8 @@
             </Select.Content>
           </Select.Root>
           {#if hasActiveFilters}
-            <Button
-              variant="secondary"
-              size="sm"
-              onclick={clearFilters}
-              class="cursor-pointer">Clear filters</Button
+            <Button variant="secondary" size="sm" onclick={clearFilters}
+              >Clear filters</Button
             >
           {/if}
         </div>
@@ -827,13 +820,12 @@
                       <Switch
                         checked={rule.enabled}
                         onCheckedChange={() => toggleRuleEnabled(rule)}
-                        class="cursor-pointer"
                       />
                       <Button
                         variant="ghost"
                         size="icon"
                         onclick={() => editRule(rule)}
-                        class="text-foreground cursor-pointer"
+                        class="text-foreground "
                         title="Edit rule"
                       >
                         <Pencil class="size-4" />
@@ -842,7 +834,7 @@
                         variant="ghost"
                         size="icon"
                         onclick={() => cloneRule(rule)}
-                        class="text-foreground cursor-pointer"
+                        class="text-foreground "
                         title="Clone rule"
                       >
                         <Copy class="size-4" />
@@ -851,7 +843,7 @@
                         variant="ghost"
                         size="icon"
                         onclick={() => exportRules([rule])}
-                        class="text-foreground cursor-pointer"
+                        class="text-foreground "
                         title="Export rule"
                       >
                         <Download class="size-4" />
@@ -860,7 +852,7 @@
                         variant="ghost"
                         size="icon"
                         onclick={() => openDeleteDialog(rule)}
-                        class="cursor-pointer text-destructive hover:text-destructive"
+                        class="text-destructive hover:text-destructive"
                       >
                         <Trash2 class="size-4" />
                       </Button>
@@ -940,7 +932,6 @@
       <AlertDialog.Footer class="flex justify-end gap-3 pt-4">
         <Button
           variant="secondary"
-          class="cursor-pointer"
           disabled={importLoading}
           onclick={() => {
             showImportDialog = false;
@@ -950,11 +941,7 @@
         >
           Cancel
         </Button>
-        <Button
-          class="cursor-pointer gap-2"
-          disabled={importLoading}
-          onclick={confirmImport}
-        >
+        <Button class="gap-2" disabled={importLoading} onclick={confirmImport}>
           {#if importLoading}
             <Spinner class="size-4" />
           {/if}
@@ -985,12 +972,12 @@
     </AlertDialog.Header>
     <AlertDialog.Footer class="flex justify-end gap-3 pt-4">
       <AlertDialog.Cancel
-        class="cursor-pointer hover text-foreground bg-secondary"
+        class="hover text-foreground bg-secondary"
         onclick={closeDeleteDialog}
       >
         Cancel
       </AlertDialog.Cancel>
-      <AlertDialog.Action class="cursor-pointer hover" onclick={confirmDelete}>
+      <AlertDialog.Action class="hover" onclick={confirmDelete}>
         Delete
       </AlertDialog.Action>
     </AlertDialog.Footer>

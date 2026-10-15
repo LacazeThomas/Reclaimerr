@@ -45,51 +45,47 @@
 
   <div class="flex flex-1 gap-2">
     <Select.Root type="single" bind:value={statusFilter}>
-      <Select.Trigger
-        class="flex-1 bg-card text-card-foreground cursor-pointer"
-      >
+      <Select.Trigger class="flex-1 bg-card text-card-foreground ">
         {statusLabel}
       </Select.Trigger>
       <Select.Content class="bg-card">
         <Select.Item
           value="all"
           label="All statuses"
-          class="text-card-foreground cursor-pointer">All statuses</Select.Item
+          class="text-card-foreground ">All statuses</Select.Item
         >
         <Select.Item
           value={ProtectionRequestStatus.Pending}
           label="Pending"
-          class="text-card-foreground cursor-pointer">Pending</Select.Item
+          class="text-card-foreground ">Pending</Select.Item
         >
         <Select.Item
           value={ProtectionRequestStatus.Approved}
           label="Approved"
-          class="text-card-foreground cursor-pointer">Approved</Select.Item
+          class="text-card-foreground ">Approved</Select.Item
         >
         <Select.Item
           value={ProtectionRequestStatus.Denied}
           label="Denied"
-          class="text-card-foreground cursor-pointer">Denied</Select.Item
+          class="text-card-foreground ">Denied</Select.Item
         >
       </Select.Content>
     </Select.Root>
 
     <Select.Root type="single" bind:value={sortOrder}>
-      <Select.Trigger
-        class="flex-1 bg-card text-card-foreground cursor-pointer"
-      >
+      <Select.Trigger class="flex-1 bg-card text-card-foreground ">
         {sortOrder === "desc" ? "Newest first" : "Oldest first"}
       </Select.Trigger>
       <Select.Content class="bg-card">
         <Select.Item
           value="desc"
           label="Newest first"
-          class="text-card-foreground cursor-pointer">Newest first</Select.Item
+          class="text-card-foreground ">Newest first</Select.Item
         >
         <Select.Item
           value="asc"
           label="Oldest first"
-          class="text-card-foreground cursor-pointer">Oldest first</Select.Item
+          class="text-card-foreground ">Oldest first</Select.Item
         >
       </Select.Content>
     </Select.Root>

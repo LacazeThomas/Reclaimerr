@@ -291,7 +291,7 @@
           <button
             {...props}
             type="button"
-            class="absolute left-1 bottom-1 z-10 cursor-pointer text-muted-foreground hover:text-primary
+            class="absolute left-1 bottom-1 z-10 text-muted-foreground hover:text-primary
               rounded p-1 hover:bg-accent"
             aria-label="Customize navigation"
           >
@@ -303,7 +303,7 @@
         {#each customizableNavItems as item}
           {#if canAccessNavItem(item)}
             <DropdownMenu.Item
-              class="cursor-pointer data-highlighted:text-primary"
+              class="data-highlighted:text-primary"
               onSelect={(event) => {
                 event.preventDefault();
                 toggleNavVisibility(item.path);
@@ -327,7 +327,7 @@
         {/each}
         <DropdownMenu.Separator />
         <DropdownMenu.Item
-          class="cursor-pointer data-highlighted:text-destructive"
+          class="data-highlighted:text-destructive"
           onSelect={(event) => {
             event.preventDefault();
             resetNavVisibility();
@@ -452,7 +452,7 @@
             onmouseleave={() => (logoutHovered = false)}
             onclick={handleLogout}
             class="w-full flex justify-center items-center gap-3 px-4 py-2 rounded-lg text-muted-foreground
-              hover:bg-destructive/10 hover:text-destructive transition-colors duration-200 cursor-pointer mt-1"
+              hover:bg-destructive/10 hover:text-destructive transition-colors duration-200 mt-1"
           >
             {#if logoutHovered}
               <DoorOpen />

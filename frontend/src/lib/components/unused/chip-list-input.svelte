@@ -55,14 +55,7 @@
         }
       }}
     />
-    <Button
-      type="button"
-      variant="secondary"
-      onclick={addValue}
-      class="cursor-pointer"
-    >
-      Add
-    </Button>
+    <Button type="button" variant="secondary" onclick={addValue}>Add</Button>
   </div>
 
   {#if values && values.length > 0}
@@ -77,7 +70,7 @@
             variant="ghost"
             size="icon"
             onclick={() => removeValue(value)}
-            class="h-5 w-5 cursor-pointer"
+            class="h-5 w-5 "
           >
             <X class="size-3" />
           </Button>

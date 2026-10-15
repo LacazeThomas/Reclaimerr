@@ -189,13 +189,13 @@
         <Select.Trigger
           id="login-background-mode"
           size="sm"
-          class="w-full cursor-pointer text-foreground sm:w-72"
+          class="w-full text-foreground sm:w-72"
         >
           {backgroundSourceLabels[mode]}
         </Select.Trigger>
         <Select.Content>
           {#each Object.entries(backgroundSourceLabels) as [value, label] (value)}
-            <Select.Item {value} {label} class="cursor-pointer">
+            <Select.Item {value} {label}>
               {label}
             </Select.Item>
           {/each}

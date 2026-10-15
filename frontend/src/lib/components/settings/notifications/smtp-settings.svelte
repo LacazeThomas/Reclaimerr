@@ -228,10 +228,7 @@
             value={settings.security}
             onValueChange={onSecurityChange}
           >
-            <Select.Trigger
-              id="smtpSecurity"
-              class="w-full cursor-pointer text-foreground"
-            >
+            <Select.Trigger id="smtpSecurity" class="w-full text-foreground">
               {securityLabels[settings.security]}
             </Select.Trigger>
             <Select.Content>
@@ -351,18 +348,13 @@
 
     <div class="flex justify-end gap-3 pt-2">
       <TestButton
-        class="cursor-pointer"
         onclick={sendTest}
         status={testing ? "loading" : undefined}
         disabled={testing || saving}
       >
         Send Test Email
       </TestButton>
-      <Button
-        class="cursor-pointer"
-        onclick={saveSettings}
-        disabled={saving || testing}
-      >
+      <Button onclick={saveSettings} disabled={saving || testing}>
         {#if saving}
           <Spinner class="size-4" />
           Saving...
@@ -392,7 +384,6 @@
         <div class="flex justify-end">
           <Button
             variant="outline"
-            class="cursor-pointer"
             onclick={enableForAll}
             disabled={enablingAll || coverage.eligible === 0}
           >

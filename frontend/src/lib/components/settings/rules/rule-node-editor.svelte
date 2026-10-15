@@ -2191,7 +2191,7 @@
         >
           {#each ["and", "or"] as const as op}
             <button
-              class={`px-2.5 py-1 text-xs font-bold transition-colors cursor-pointer ${
+              class={`px-2.5 py-1 text-xs font-bold transition-colors ${
                 node.op === op
                   ? "bg-primary text-primary-foreground"
                   : "bg-transparent text-muted-foreground hover:text-foreground"
@@ -2220,7 +2220,7 @@
         {#if onRemove}
           <Button
             size="icon-sm"
-            class="cursor-pointer bg-destructive/80 hover:bg-destructive/90 text-destructive-foreground shrink-0"
+            class="bg-destructive/80 hover:bg-destructive/90 text-destructive-foreground shrink-0"
             onclick={onRemove}
           >
             <Trash2 class="size-3.5" />
@@ -2275,7 +2275,7 @@
         <Button
           size="sm"
           variant="secondary"
-          class="h-8 text-xs gap-1.5 cursor-pointer bg-secondary/75 hover:bg-secondary/90 text-foreground"
+          class="h-8 text-xs gap-1.5 bg-secondary/75 hover:bg-secondary/90 text-foreground"
           onclick={() => addCondition(node)}
         >
           <Plus class="size-3.5" />
@@ -2285,7 +2285,7 @@
         <Button
           size="sm"
           variant="secondary"
-          class="h-8 text-xs gap-1.5 cursor-pointer bg-secondary/75 hover:bg-secondary/90 text-foreground"
+          class="h-8 text-xs gap-1.5 bg-secondary/75 hover:bg-secondary/90 text-foreground"
           onclick={() => addGroup(node)}
           disabled={!canAddGroup(rootNode) || !canNestGroup(depth)}
           title={addGroupDisabledTitle(depth)}
@@ -2353,7 +2353,7 @@
             variant="outline"
             aria-label="Select rule field"
             aria-expanded={fieldPickerOpen}
-            class="h-8 w-full min-w-0 justify-between bg-background px-3 text-sm font-normal text-foreground cursor-pointer"
+            class="h-8 w-full min-w-0 justify-between bg-background px-3 text-sm font-normal text-foreground "
           >
             <span class="truncate">{fieldLabel(node.field)}</span>
             <ChevronsUpDown class="size-4 shrink-0 opacity-60" />
@@ -2400,7 +2400,7 @@
           setConditionOperator(node, value as RuleConditionOperator)}
       >
         <Select.Trigger
-          class="col-span-2 row-start-2 h-8 w-full min-w-0 md:col-auto md:row-auto md:w-auto md:flex-1 md:min-w-32 text-sm text-foreground cursor-pointer bg-background"
+          class="col-span-2 row-start-2 h-8 w-full min-w-0 md:col-auto md:row-auto md:w-auto md:flex-1 md:min-w-32 text-sm text-foreground bg-background"
         >
           {operatorLabel(node.operator)}
         </Select.Trigger>
@@ -2437,7 +2437,7 @@
                 onValueChange={(value) => (byteUnit = value as ByteUnit)}
               >
                 <Select.Trigger
-                  class="h-8 w-20 shrink-0 text-sm text-foreground cursor-pointer bg-background"
+                  class="h-8 w-20 shrink-0 text-sm text-foreground bg-background"
                   aria-label="Size unit"
                 >
                   {byteUnit}
@@ -2470,7 +2470,7 @@
               <Button
                 size="sm"
                 variant="secondary"
-                class="h-8 text-xs gap-1.5 cursor-pointer bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
+                class="h-8 text-xs gap-1.5 bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
                 onclick={() => (userScopedPlaybackPickerOpen = true)}
               >
                 <Users class="size-3.5" />
@@ -2502,7 +2502,7 @@
               onValueChange={(v) => setConditionValue(node, v)}
             >
               <Select.Trigger
-                class="h-8 flex-1 text-sm text-foreground cursor-pointer bg-background"
+                class="h-8 flex-1 text-sm text-foreground bg-background"
               >
                 {typeof node.value === "string" && node.value
                   ? node.value
@@ -2543,7 +2543,7 @@
               <Button
                 size="sm"
                 variant="secondary"
-                class="h-8 text-xs gap-1.5 cursor-pointer bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
+                class="h-8 text-xs gap-1.5 bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
                 onclick={() => (seerrPickerOpen = true)}
               >
                 <Users class="size-3.5" />
@@ -2554,7 +2554,7 @@
               <Button
                 size="sm"
                 variant="secondary"
-                class="h-8 text-xs gap-1.5 cursor-pointer bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
+                class="h-8 text-xs gap-1.5 bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
                 onclick={() => (playbackUserPickerOpen = true)}
               >
                 <Users class="size-3.5" />
@@ -2565,7 +2565,7 @@
               <Button
                 size="sm"
                 variant="secondary"
-                class="h-8 text-xs cursor-pointer bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
+                class="h-8 text-xs bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
                 onclick={() => (collectionPickerOpen = true)}
               >
                 <span class="hidden md:inline">Pick Collections</span>
@@ -2576,7 +2576,7 @@
               <Button
                 size="sm"
                 variant="secondary"
-                class="h-8 text-xs cursor-pointer bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
+                class="h-8 text-xs bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
                 onclick={() => (genrePickerOpen = true)}
               >
                 <span class="hidden md:inline">Pick Genres</span>
@@ -2587,7 +2587,7 @@
               <Button
                 size="sm"
                 variant="secondary"
-                class="h-8 text-xs cursor-pointer bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
+                class="h-8 text-xs bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
                 onclick={() => (originalLanguagePickerOpen = true)}
               >
                 <span class="hidden md:inline">Pick Languages</span>
@@ -2598,7 +2598,7 @@
               <Button
                 size="sm"
                 variant="secondary"
-                class="h-8 text-xs cursor-pointer bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
+                class="h-8 text-xs bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
                 onclick={() => (originCountryPickerOpen = true)}
               >
                 <span class="hidden md:inline">Pick Countries</span>
@@ -2609,7 +2609,7 @@
               <Button
                 size="sm"
                 variant="secondary"
-                class="h-8 text-xs cursor-pointer bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
+                class="h-8 text-xs bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
                 onclick={() => (mediaServerCollectionPickerOpen = true)}
               >
                 <span class="hidden md:inline">Pick Collections</span>
@@ -2620,7 +2620,7 @@
               <Button
                 size="sm"
                 variant="secondary"
-                class="h-8 text-xs gap-1.5 cursor-pointer bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
+                class="h-8 text-xs gap-1.5 bg-secondary/75 hover:bg-secondary/90 text-foreground shrink-0"
                 onclick={() => (pathPickerOpen = true)}
               >
                 <FolderSearch class="size-3.5" />
@@ -2653,7 +2653,7 @@
           />
           <Button
             size="icon-sm"
-            class="cursor-pointer bg-destructive/80 hover:bg-destructive/90 text-destructive-foreground shrink-0"
+            class="bg-destructive/80 hover:bg-destructive/90 text-destructive-foreground shrink-0"
             onclick={onRemove}
           >
             <Trash2 class="size-3.5" />

@@ -549,18 +549,8 @@
     </div>
 
     <Dialog.Footer class="mt-auto">
-      <Button
-        variant="secondary"
-        class="cursor-pointer"
-        onclick={() => handleClose()}
-      >
-        Cancel
-      </Button>
-      <Button
-        onclick={handleSubmit}
-        disabled={!canSubmit || submitting}
-        class="cursor-pointer"
-      >
+      <Button variant="secondary" onclick={() => handleClose()}>Cancel</Button>
+      <Button onclick={handleSubmit} disabled={!canSubmit || submitting}>
         {#if submitting}
           {isAdmin ? "Submitting..." : "Requesting..."}
         {:else}

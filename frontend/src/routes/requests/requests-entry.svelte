@@ -31,7 +31,7 @@
       <!-- protection tab -->
       <Button
         onclick={() => (activeTab = "protection")}
-        class="cursor-pointer
+        class="
           {activeTab === 'protection'
           ? 'bg-primary text-background dark:text-foreground'
           : 'text-foreground bg-transparent'}"
@@ -43,7 +43,7 @@
       <!-- delete tab -->
       <Button
         onclick={() => (activeTab = "deletion")}
-        class="cursor-pointer
+        class="
           {activeTab === 'deletion'
           ? 'bg-primary text-background dark:text-foreground'
           : 'text-foreground bg-transparent'}"

@@ -547,7 +547,7 @@
           <Button
             size="icon"
             variant="ghost"
-            class="size-7 cursor-pointer"
+            class="size-7 "
             disabled={index === 0}
             onclick={() => movePriority(index, -1)}
             aria-label="Move up"
@@ -557,7 +557,7 @@
           <Button
             size="icon"
             variant="ghost"
-            class="size-7 cursor-pointer"
+            class="size-7 "
             disabled={index === priority.length - 1}
             onclick={() => movePriority(index, 1)}
             aria-label="Move down"
@@ -599,7 +599,7 @@
         </p>
       </div>
       {#if isAdmin && view === "media"}
-        <Button variant="outline" class="cursor-pointer" onclick={openSettings}>
+        <Button variant="outline" onclick={openSettings}>
           <SlidersHorizontal class="size-4" />
           Keeper preference
         </Button>
@@ -610,7 +610,7 @@
       <!-- media server copies tab -->
       <Button
         onclick={() => (view = "media")}
-        class="cursor-pointer
+        class="
           {view === 'media'
           ? 'bg-primary text-background dark:text-foreground'
           : 'text-foreground bg-transparent'}"
@@ -622,7 +622,7 @@
       <!-- upgrade leftovers tab -->
       <Button
         onclick={() => (view = "leftovers")}
-        class="cursor-pointer
+        class="
           {view === 'leftovers'
           ? 'bg-primary text-background dark:text-foreground'
           : 'text-foreground bg-transparent'}"
@@ -768,15 +768,15 @@
       </div>
 
       <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-foreground">
-        <label class="flex items-center gap-2 cursor-pointer">
+        <label class="flex items-center gap-2">
           <Switch bind:checked={includeCrossLibrary} />
           Include copies in different libraries
         </label>
-        <label class="flex items-center gap-2 cursor-pointer">
+        <label class="flex items-center gap-2">
           <Switch bind:checked={includeManual} />
           Show items that need manual review
         </label>
-        <label class="flex items-center gap-2 cursor-pointer">
+        <label class="flex items-center gap-2">
           <Switch bind:checked={includeIgnored} />
           Show ignored and protected
         </label>
@@ -788,14 +788,14 @@
           sm:flex-row sm:items-center sm:justify-between"
         >
           <label
-            class="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
+            class="flex items-center gap-2 text-sm font-medium text-foreground"
           >
             <input
               type="checkbox"
               checked={allPageSelected}
               indeterminate={somePageSelected}
               onchange={toggleSelectAll}
-              class="cursor-pointer accent-primary"
+              class="accent-primary"
             />
             Select all on this page
           </label>
@@ -818,7 +818,6 @@
           <Button
             size="sm"
             variant="destructive"
-            class="cursor-pointer"
             onclick={() => openConfirm(selectedGroups)}
           >
             <Trash2 class="size-4" />
@@ -855,7 +854,7 @@
                   {#if canManage}
                     <input
                       type="checkbox"
-                      class="mt-1 cursor-pointer accent-primary disabled:cursor-not-allowed"
+                      class="mt-1 accent-primary disabled:cursor-not-allowed"
                       checked={selectedKeys.has(group.key)}
                       disabled={!canClean(group)}
                       onchange={() => toggleSelect(group.key)}
@@ -928,7 +927,6 @@
                         <Button
                           size="sm"
                           variant="outline"
-                          class="cursor-pointer"
                           onclick={() => setIgnored(group, false)}
                         >
                           <Eye class="size-4" />
@@ -938,7 +936,6 @@
                         <Button
                           size="sm"
                           variant="outline"
-                          class="cursor-pointer"
                           onclick={() => setIgnored(group, true)}
                         >
                           <EyeOff class="size-4" />
@@ -948,7 +945,6 @@
                       <Button
                         size="sm"
                         variant="destructive"
-                        class="cursor-pointer"
                         disabled={!canClean(group)}
                         onclick={() => openConfirm([group])}
                       >
@@ -967,9 +963,7 @@
                       {isKeeper
                         ? 'border-primary bg-primary/10'
                         : 'border-border bg-muted/30'}
-                      {canManage && isActionable(group)
-                        ? 'cursor-pointer'
-                        : ''}"
+                      {canManage && isActionable(group) ? '' : ''}"
                     >
                       <div class="flex items-center gap-2">
                         {#if canManage}

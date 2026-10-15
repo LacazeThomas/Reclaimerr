@@ -230,7 +230,7 @@
         <button
           onclick={cycleSizeUnit}
           class="text-xs px-2 py-0.5 rounded-full border border-border bg-secondary/50 text-muted-foreground
-            hover:bg-secondary transition-colors cursor-pointer"
+            hover:bg-secondary transition-colors"
         >
           {sizeUnit === "AUTO" ? "Auto" : sizeUnit}
         </button>

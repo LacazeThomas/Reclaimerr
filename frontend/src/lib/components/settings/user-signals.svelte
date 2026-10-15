@@ -613,7 +613,7 @@
         <Button
           size="sm"
           type="button"
-          class="cursor-pointer gap-2"
+          class="gap-2"
           onclick={refreshLookups}
           disabled={refreshingLookups}
         >
@@ -692,7 +692,7 @@
                 | "media_desc"
                 | "service_asc")}
           >
-            <Select.Trigger class="w-full cursor-pointer text-foreground">
+            <Select.Trigger class="w-full text-foreground">
               {mappingSort === "seerr_asc"
                 ? "Seerr user A-Z"
                 : mappingSort === "seerr_desc"
@@ -780,9 +780,7 @@
                   }
                 }}
               >
-                <Select.Trigger
-                  class="w-full min-w-0 cursor-pointer text-foreground"
-                >
+                <Select.Trigger class="w-full min-w-0 text-foreground">
                   <span class="block truncate"
                     >{instanceScopeLabel(mapping)}</span
                   >
@@ -795,7 +793,6 @@
                     <Select.Item
                       value={String(instance.configId)}
                       label={instance.label}
-                      class="cursor-pointer"
                     >
                       {instance.label}
                     </Select.Item>
@@ -829,9 +826,7 @@
                   mapping.seerr_user_id = picked.id;
                 }}
               >
-                <Select.Trigger
-                  class="w-full min-w-0 cursor-pointer text-foreground"
-                >
+                <Select.Trigger class="w-full min-w-0 text-foreground">
                   <span class="block truncate"
                     >{seerrTriggerLabel(mapping)}</span
                   >
@@ -841,11 +836,7 @@
                     Manual username only
                   </Select.Item>
                   {#each seerrUsers.filter((user) => mapping.seerr_service_config_id === null || user.service_config_id === mapping.seerr_service_config_id) as user (user.key)}
-                    <Select.Item
-                      value={user.key}
-                      label={seerrLabel(user)}
-                      class="cursor-pointer"
-                    >
+                    <Select.Item value={user.key} label={seerrLabel(user)}>
                       {seerrLabel(user)}
                     </Select.Item>
                   {/each}
@@ -957,9 +948,7 @@
                     !value || value === "__any__" ? null : value;
                 }}
               >
-                <Select.Trigger
-                  class="w-full min-w-0 cursor-pointer text-foreground"
-                >
+                <Select.Trigger class="w-full min-w-0 text-foreground">
                   <span class="block truncate">
                     {serviceScopeLabel(mapping.service_type)}
                   </span>
@@ -968,19 +957,11 @@
                   <Select.Item value="__any__" label="Any service">
                     Any service
                   </Select.Item>
-                  <Select.Item value="plex" label="Plex" class="cursor-pointer">
-                    Plex
-                  </Select.Item>
-                  <Select.Item
-                    value="jellyfin"
-                    label="Jellyfin"
-                    class="cursor-pointer"
-                  >
+                  <Select.Item value="plex" label="Plex">Plex</Select.Item>
+                  <Select.Item value="jellyfin" label="Jellyfin">
                     Jellyfin
                   </Select.Item>
-                  <Select.Item value="emby" label="Emby" class="cursor-pointer">
-                    Emby
-                  </Select.Item>
+                  <Select.Item value="emby" label="Emby">Emby</Select.Item>
                 </Select.Content>
               </Select.Root>
             </div>
@@ -991,7 +972,7 @@
               <Button
                 size="icon-sm"
                 type="button"
-                class="w-full sm:w-9 bg-destructive/70 hover:bg-destructive/80 cursor-pointer"
+                class="w-full sm:w-9 bg-destructive/70 hover:bg-destructive/80 "
                 onclick={() => removeMapping(row.index)}
                 aria-label="Remove mapping"
               >
@@ -1005,12 +986,7 @@
       <div
         class="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between"
       >
-        <Button
-          size="sm"
-          type="button"
-          class="cursor-pointer gap-2"
-          onclick={addMapping}
-        >
+        <Button size="sm" type="button" class="gap-2" onclick={addMapping}>
           <Plus class="size-4" />
           Add mapping
         </Button>
@@ -1024,7 +1000,7 @@
       <Button
         onclick={saveSettings}
         disabled={savingSettings || loadError !== null}
-        class="cursor-pointer gap-2"
+        class="gap-2"
       >
         {#if savingSettings}
           <Spinner class="size-4" />

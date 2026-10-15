@@ -355,7 +355,6 @@
               {#if task.editable}
                 <Button
                   size="sm"
-                  class="cursor-pointer"
                   onclick={() => openEditDialog(task)}
                   disabled={actionInProgress[task.id]}
                   title="Edit schedule"
@@ -367,7 +366,6 @@
               {#if task.enabled}
                 <Button
                   size="sm"
-                  class="cursor-pointer"
                   onclick={() => runTaskNow(task)}
                   disabled={actionInProgress[task.id] || isTaskActive(task)}
                   title={isTaskActive(task)

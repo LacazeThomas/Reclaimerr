@@ -417,7 +417,7 @@
           value={addServerKey}
           onValueChange={(value) => (addServerKey = value as ServerKey)}
         >
-          <Select.Trigger size="sm" class="w-52 cursor-pointer text-foreground">
+          <Select.Trigger size="sm" class="w-52 text-foreground">
             {@const Icon = SERVER_ICONS[addServerKey]}
             <span class="flex items-center gap-2">
               <Icon class="size-4 shrink-0" />
@@ -427,11 +427,7 @@
           <Select.Content>
             {#each SERVERS as serverKey (serverKey)}
               {@const Icon = SERVER_ICONS[serverKey]}
-              <Select.Item
-                value={serverKey}
-                label={SERVER_LABELS[serverKey]}
-                class="cursor-pointer"
-              >
+              <Select.Item value={serverKey} label={SERVER_LABELS[serverKey]}>
                 <span class="flex items-center gap-2">
                   <Icon class="size-4 shrink-0" />
                   {SERVER_LABELS[serverKey]}
@@ -444,7 +440,7 @@
       <Button
         id="add-media-server-button"
         size="sm"
-        class="cursor-pointer gap-1.5"
+        class="gap-1.5"
         disabled={busy}
         onclick={openAddDialog}
       >
@@ -541,7 +537,7 @@
             {/if}
             <Button
               size="sm"
-              class="cursor-pointer gap-2 mt-1"
+              class="gap-2 mt-1"
               disabled={syncingMedia}
               onclick={syncMedia}
             >
@@ -557,7 +553,7 @@
         </div>
         <Button
           variant="ghost"
-          class="absolute top-1 right-1 cursor-pointer text-muted-foreground hover:text-foreground"
+          class="absolute top-1 right-1 text-muted-foreground hover:text-foreground"
           onclick={() => (syncBanner = null)}
           aria-label="Dismiss"
         >

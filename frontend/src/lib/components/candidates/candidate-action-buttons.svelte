@@ -34,8 +34,8 @@
 
   const btnBase = $derived(
     compact
-      ? "cursor-pointer rounded-full size-7 flex items-center justify-center"
-      : "cursor-pointer rounded-full",
+      ? "rounded-full size-7 flex items-center justify-center"
+      : "rounded-full",
   );
   const iconCls = $derived(compact ? "size-3.5 shrink-0" : "size-4 shrink-0");
 

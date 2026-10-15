@@ -68,10 +68,9 @@
         {/if}
         <span class="align-middle">{tabLabel}</span>
       </h2>
-      <label class="flex items-center gap-2 cursor-pointer">
+      <label class="flex items-center gap-2">
         <span class="text-sm text-foreground">Enable</span>
         <Switch
-          class="cursor-pointer"
           checked={disableToggle ? true : enabled}
           disabled={disableToggle}
           onCheckedChange={(checked) => dispatchChange("enabled", checked)}
@@ -175,7 +174,7 @@
         type="button"
         variant="ghost"
         size="icon"
-        class="absolute right-0 top-0 h-9 w-9 cursor-pointer"
+        class="absolute right-0 top-0 h-9 w-9 "
         disabled={!apiKey}
         aria-label={`${showApiKey ? "Hide" : "Show"} entered ${apiKeyLabel}`}
         aria-pressed={showApiKey}
@@ -272,9 +271,8 @@
     <!-- MDBList supporter mode -->
     {#if "supporter_mode" in extraSettings}
       <div>
-        <label class="flex items-center gap-2 cursor-pointer">
+        <label class="flex items-center gap-2">
           <Switch
-            class="cursor-pointer"
             checked={Boolean(extraSettings.supporter_mode)}
             onCheckedChange={(checked) => {
               dispatchChange("extraSettings.supporter_mode", checked);

@@ -473,12 +473,11 @@
       <Button
         type="button"
         variant="secondary"
-        class="cursor-pointer"
         onclick={() => (showImportModal = true)}>Import CSV</Button
       >
       <Button
         type="button"
-        class="hover cursor-pointer"
+        class="hover "
         onclick={() => (showCreateModal = true)}><UserPlus /> Add User</Button
       >
     </div>
@@ -503,7 +502,7 @@
   </div>
   <Select.Root type="single" bind:value={roleFilter}>
     <Select.Trigger
-      class="w-36 bg-card text-card-foreground cursor-pointer"
+      class="w-36 bg-card text-card-foreground "
       aria-label="Filter users by role"
     >
       {roleFilter === UserRole.Admin
@@ -523,7 +522,6 @@
       type="button"
       variant="secondary"
       size="sm"
-      class="cursor-pointer"
       onclick={clearUserFilters}
     >
       Clear filters
@@ -648,7 +646,7 @@
                   <Button
                     type="button"
                     size="icon"
-                    class="rounded-full cursor-pointer"
+                    class="rounded-full "
                     title={`Edit user ${user.username}`}
                     aria-label={`Edit user ${user.username}`}
                     onclick={() => openEditModal(user)}><UserPen /></Button
@@ -667,7 +665,7 @@
                       size="icon"
                       class="rounded-full hover:bg-destructive-secondary bg-destructive
                     text-destructive-foreground disabled:bg-muted disabled:text-muted-foreground 
-                    disabled:cursor-not-allowed cursor-pointer"
+                    disabled:cursor-not-allowed "
                       title={user.id === $auth.user?.id
                         ? "You cannot delete your own account."
                         : `Delete user ${user.username}`}
@@ -717,7 +715,6 @@
       <Button
         type="button"
         size="sm"
-        class="cursor-pointer"
         disabled={mediaIdentitiesLoading}
         onclick={() => loadMediaIdentities()}
       >
@@ -833,7 +830,6 @@
                     type="button"
                     size="sm"
                     variant="secondary"
-                    class="cursor-pointer"
                     disabled={isIdentityBusy(identity.id)}
                     onclick={() => unlinkIdentity(identity)}
                   >
@@ -844,7 +840,6 @@
                   <Button
                     type="button"
                     size="sm"
-                    class="cursor-pointer"
                     disabled={isIdentityBusy(identity.id) ||
                       !linkTargets[identity.id]}
                     onclick={() => linkIdentity(identity)}
@@ -965,7 +960,7 @@
                 class="flex items-start gap-2 text-sm text-foreground {canEditPermission(
                   option.value,
                 )
-                  ? 'cursor-pointer'
+                  ? ''
                   : 'opacity-50 cursor-not-allowed'}"
               >
                 <Checkbox
@@ -995,9 +990,7 @@
               id="new_page_access_container"
               class="space-y-3 rounded-lg border border-border p-3"
             >
-              <Label
-                class="flex items-start gap-2 text-sm text-foreground cursor-pointer"
-              >
+              <Label class="flex items-start gap-2 text-sm text-foreground ">
                 <Checkbox
                   checked={newUser.use_default_page_access}
                   onCheckedChange={(checked) =>
@@ -1012,9 +1005,7 @@
                 </span>
               </Label>
               {#if !newUser.use_default_page_access}
-                <Label
-                  class="flex items-start gap-2 text-sm text-foreground cursor-pointer"
-                >
+                <Label class="flex items-start gap-2 text-sm text-foreground ">
                   <Checkbox
                     checked={newUser.allowed_pages === null}
                     onCheckedChange={(checked) =>
@@ -1031,7 +1022,7 @@
                   <div class="grid gap-2 sm:grid-cols-2">
                     {#each PAGE_ACCESS_OPTIONS as option}
                       <Label
-                        class="flex items-start gap-2 rounded-md border border-border p-2 text-sm text-foreground cursor-pointer"
+                        class="flex items-start gap-2 rounded-md border border-border p-2 text-sm text-foreground "
                       >
                         <Checkbox
                           checked={newUser.allowed_pages.includes(option.value)}
@@ -1063,13 +1054,11 @@
         <div class="flex justify-between gap-3 pt-4">
           <Button
             type="button"
-            class="flex-1 hover cursor-pointer"
+            class="flex-1 hover "
             onclick={closeModal}
             variant="secondary">Cancel</Button
           >
-          <Button type="submit" class="flex-1 hover cursor-pointer"
-            >Save Changes</Button
-          >
+          <Button type="submit" class="flex-1 hover ">Save Changes</Button>
         </div>
       </form>
     </Dialog.Content>
@@ -1166,7 +1155,7 @@
                 class="flex items-start gap-2 text-sm text-foreground {canEditPermission(
                   option.value,
                 )
-                  ? 'cursor-pointer'
+                  ? ''
                   : 'opacity-50 cursor-not-allowed'}"
               >
                 <Checkbox
@@ -1195,9 +1184,7 @@
               id="edit_page_access_container"
               class="space-y-3 rounded-lg border border-border p-3"
             >
-              <Label
-                class="flex items-start gap-2 text-sm text-foreground cursor-pointer"
-              >
+              <Label class="flex items-start gap-2 text-sm text-foreground ">
                 <Checkbox
                   checked={editUser.allowed_pages === null}
                   onCheckedChange={(checked) =>
@@ -1214,7 +1201,7 @@
                 <div class="grid gap-2 sm:grid-cols-2">
                   {#each PAGE_ACCESS_OPTIONS as option}
                     <Label
-                      class="flex items-start gap-2 rounded-md border border-border p-2 text-sm text-foreground cursor-pointer"
+                      class="flex items-start gap-2 rounded-md border border-border p-2 text-sm text-foreground "
                     >
                       <Checkbox
                         checked={editUser.allowed_pages.includes(option.value)}
@@ -1257,13 +1244,11 @@
         <div class="flex justify-between gap-3 pt-4">
           <Button
             type="button"
-            class="flex-1 hover cursor-pointer"
+            class="flex-1 hover "
             onclick={closeEditModal}
             variant="secondary">Cancel</Button
           >
-          <Button type="submit" class="flex-1 hover cursor-pointer"
-            >Save Changes</Button
-          >
+          <Button type="submit" class="flex-1 hover ">Save Changes</Button>
         </div>
       </form>
     </Dialog.Content>
@@ -1289,12 +1274,12 @@
     </AlertDialog.Header>
     <AlertDialog.Footer class="flex justify-end gap-3 pt-4">
       <AlertDialog.Cancel
-        class="cursor-pointer hover text-foreground bg-secondary"
+        class="hover text-foreground bg-secondary"
         onclick={closeDeleteDialog}
       >
         Cancel
       </AlertDialog.Cancel>
-      <AlertDialog.Action class="cursor-pointer hover" onclick={confirmDelete}>
+      <AlertDialog.Action class="hover" onclick={confirmDelete}>
         Delete
       </AlertDialog.Action>
     </AlertDialog.Footer>

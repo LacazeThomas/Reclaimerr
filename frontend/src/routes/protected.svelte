@@ -389,13 +389,11 @@
       </AlertDialog.Description>
     </AlertDialog.Header>
     <AlertDialog.Footer class="flex justify-end gap-3 pt-4">
-      <AlertDialog.Cancel
-        class="cursor-pointer hover text-foreground bg-secondary"
-      >
+      <AlertDialog.Cancel class="hover text-foreground bg-secondary">
         Cancel
       </AlertDialog.Cancel>
       <AlertDialog.Action
-        class="cursor-pointer hover"
+        class="hover"
         onclick={removeEntry}
         disabled={removeSubmitting}
       >
@@ -543,7 +541,7 @@
         type="button"
         variant="secondary"
         size="sm"
-        class="mb-4 cursor-pointer"
+        class="mb-4 "
         onclick={clearFilters}
         aria-label="Clear protected media search and filters"
       >
@@ -742,7 +740,7 @@
                         <Button
                           type="button"
                           size="icon-sm"
-                          class="rounded-full cursor-pointer"
+                          class="rounded-full "
                           onclick={() => openEditDuration(entry)}
                         >
                           <Pencil class="w-4 h-4" />
@@ -750,7 +748,7 @@
                         <Button
                           type="button"
                           size="icon-sm"
-                          class="rounded-full cursor-pointer hover:bg-destructive-secondary bg-destructive text-destructive-foreground"
+                          class="rounded-full hover:bg-destructive-secondary bg-destructive text-destructive-foreground"
                           onclick={() => openRemoveDialog(entry)}
                         >
                           <Trash2 class="w-4 h-4" />

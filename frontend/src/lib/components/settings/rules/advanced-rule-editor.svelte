@@ -723,7 +723,6 @@
   <div class="flex flex-col md:flex-row items-center justify-between gap-3">
     <div class="flex items-center gap-3">
       <Button
-        class="cursor-pointer"
         variant="ghost"
         size="icon"
         onclick={cancel}
@@ -750,7 +749,6 @@
         variant="secondary"
         onclick={() => void loadPreviewPage(1)}
         disabled={previewLoading || !canPreviewRule}
-        class="cursor-pointer"
       >
         {#if previewLoading}
           <Eye class="size-4 animate-spin" /> Previewing...
@@ -758,11 +756,7 @@
           <Eye class="size-4" /> Preview Matches
         {/if}
       </Button>
-      <Button
-        onclick={save}
-        disabled={saving || !canSaveRule}
-        class="gap-2 cursor-pointer"
-      >
+      <Button onclick={save} disabled={saving || !canSaveRule} class="gap-2 ">
         <Save class="size-4" />
         {saving ? "Saving..." : "Save Rule"}
       </Button>
@@ -824,9 +818,7 @@
             }
           }}
         >
-          <Select.Trigger
-            class="w-full flex-10 bg-card text-card-foreground cursor-pointer"
-          >
+          <Select.Trigger class="w-full flex-10 bg-card text-card-foreground ">
             {targetScope === "movie_version"
               ? "Movie version"
               : targetScope === "series"
@@ -872,9 +864,7 @@
           if (value === "candidate" || value === "protect") outcome = value;
         }}
       >
-        <Select.Trigger
-          class="w-full bg-card text-card-foreground cursor-pointer"
-        >
+        <Select.Trigger class="w-full bg-card text-card-foreground ">
           {outcome === "protect"
             ? "Create automated protection"
             : "Create cleanup candidate"}
@@ -1026,9 +1016,7 @@
           {#each selectedArrInstances as instance}
             <Label
               class="flex items-center gap-2 rounded-md border border-border bg-background/40 p-3 text-sm
-                text-foreground cursor-pointer {instance.enabled
-                ? ''
-                : 'opacity-60'}"
+                text-foreground {instance.enabled ? '' : 'opacity-60'}"
             >
               <Checkbox
                 checked={selectedArrConfigIds.includes(instance.id)}
@@ -1073,7 +1061,7 @@
               }}
             >
               <Select.Trigger
-                class="w-full min-h-9 data-[size=default]:h-auto whitespace-normal text-left bg-card text-card-foreground cursor-pointer"
+                class="w-full min-h-9 data-[size=default]:h-auto whitespace-normal text-left bg-card text-card-foreground "
               >
                 {arrActionLabel(arrAction)}
               </Select.Trigger>
@@ -1159,9 +1147,7 @@
                     qualityProfileId = Number.isFinite(parsed) ? parsed : null;
                   }}
                 >
-                  <Select.Trigger
-                    class="w-full bg-card text-card-foreground cursor-pointer"
-                  >
+                  <Select.Trigger class="w-full bg-card text-card-foreground ">
                     {qualityProfiles.find(
                       (profile) => profile.id === qualityProfileId,
                     )?.name ?? "Select a profile"}
@@ -1534,7 +1520,7 @@
                       {#if ruleUsesRequesterWatch && entry.tmdb_id !== null}
                         <button
                           type="button"
-                          class="text-xs leading-5 px-2 rounded-2xl border border-border bg-card text-muted-foreground hover:text-foreground cursor-pointer"
+                          class="text-xs leading-5 px-2 rounded-2xl border border-border bg-card text-muted-foreground hover:text-foreground"
                           onclick={() => void openRequesterWatchExplain(entry)}
                         >
                           Why?

@@ -270,7 +270,7 @@
         </p>
       {/if}
       <details class="text-sm text-muted-foreground">
-        <summary class="cursor-pointer font-medium text-foreground"
+        <summary class="font-medium text-foreground"
           >Recover access outside the app</summary
         >
         <p class="mt-2">
@@ -381,7 +381,7 @@
           >
             <Select.Trigger
               id="oidcTokenAuthMethod"
-              class="w-full cursor-pointer text-foreground"
+              class="w-full text-foreground"
             >
               {oidcSettings.token_endpoint_auth_method}
             </Select.Trigger>
@@ -491,7 +491,6 @@
 
       <div class="flex justify-end gap-3 pt-2">
         <TestButton
-          class="cursor-pointer"
           onclick={testConnection}
           status={testing ? "loading" : undefined}
           disabled={testing || saving}
@@ -499,7 +498,6 @@
           Test Discovery
         </TestButton>
         <Button
-          class="cursor-pointer"
           onclick={saveSettings}
           disabled={saving || testing || !hasUsableLogin}
         >

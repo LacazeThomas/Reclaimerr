@@ -245,7 +245,6 @@
           </p>
         </div>
         <Switch
-          class="cursor-pointer"
           checked={effectiveEnabled}
           disabled={willBeMain}
           onCheckedChange={(checked) => (enabled = checked)}
@@ -265,22 +264,16 @@
         onclick={testConnection}
         disabled={testing || saving || !baseUrl.trim()}
         status={testStatus}
-        class="cursor-pointer gap-2 sm:mr-auto"
+        class="gap-2 sm:mr-auto"
         size="sm">Test</TestButton
       >
       <Button
         variant="outline"
         size="sm"
-        class="cursor-pointer"
         disabled={saving}
         onclick={() => (open = false)}>Cancel</Button
       >
-      <Button
-        size="sm"
-        class="cursor-pointer gap-2"
-        disabled={!canSave}
-        onclick={save}
-      >
+      <Button size="sm" class="gap-2" disabled={!canSave} onclick={save}>
         {#if saving}
           <Spinner class="size-4" />
           Saving...

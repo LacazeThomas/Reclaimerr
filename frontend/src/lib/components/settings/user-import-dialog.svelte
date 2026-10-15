@@ -76,11 +76,8 @@
       </Dialog.Description>
     </Dialog.Header>
     <div class="space-y-4">
-      <Button
-        class="cursor-pointer"
-        variant="secondary"
-        onclick={downloadTemplate}
-        disabled={busy}>Download CSV Template</Button
+      <Button variant="secondary" onclick={downloadTemplate} disabled={busy}
+        >Download CSV Template</Button
       >
       <div class="rounded-md border border-border p-3 text-sm space-y-2">
         <p>
@@ -153,20 +150,17 @@
       {/if}
       <div class="flex flex-wrap justify-end gap-2">
         <Button
-          class="cursor-pointer"
           variant="secondary"
           disabled={busy}
           onclick={() => (open = false)}>Close</Button
         >
         <Button
-          class="cursor-pointer"
           variant="secondary"
           disabled={!file || busy || completed}
           onclick={() => submit(true)}
           >{busy ? "Processing…" : "Preview CSV"}</Button
         >
         <Button
-          class="cursor-pointer"
           disabled={busy ||
             !result ||
             result.errors > 0 ||

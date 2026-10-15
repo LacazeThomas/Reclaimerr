@@ -385,12 +385,7 @@
       {/if}
     </p>
     {#if canManage}
-      <Button
-        variant="outline"
-        class="cursor-pointer"
-        disabled={scanning}
-        onclick={startScan}
-      >
+      <Button variant="outline" disabled={scanning} onclick={startScan}>
         <RefreshCw class="size-4 {scanning ? 'animate-spin' : ''}" />
         {scanning ? "Scanning..." : "Scan now"}
       </Button>
@@ -495,11 +490,11 @@
   </div>
 
   <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-foreground">
-    <label class="flex items-center gap-2 cursor-pointer">
+    <label class="flex items-center gap-2">
       <Switch bind:checked={includeManual} />
       Show items that need manual review
     </label>
-    <label class="flex items-center gap-2 cursor-pointer">
+    <label class="flex items-center gap-2">
       <Switch bind:checked={includeIgnored} />
       Show ignored and protected
     </label>
@@ -511,14 +506,14 @@
         sm:flex-row sm:items-center sm:justify-between"
     >
       <label
-        class="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
+        class="flex items-center gap-2 text-sm font-medium text-foreground"
       >
         <input
           type="checkbox"
           checked={allPageSelected}
           indeterminate={somePageSelected}
           onchange={toggleSelectAll}
-          class="cursor-pointer accent-primary"
+          class="accent-primary"
         />
         Select all on this page
       </label>
@@ -541,7 +536,6 @@
       <Button
         size="sm"
         variant="destructive"
-        class="cursor-pointer"
         onclick={() => openConfirm(selectedItems)}
       >
         <Trash2 class="size-4" />
@@ -571,7 +565,7 @@
             {#if canManage}
               <input
                 type="checkbox"
-                class="mt-1 cursor-pointer accent-primary disabled:cursor-not-allowed"
+                class="mt-1 accent-primary disabled:cursor-not-allowed"
                 checked={selectedIds.has(item.id)}
                 disabled={!canDelete(item)}
                 onchange={() => toggleSelect(item.id)}
@@ -636,7 +630,6 @@
                   <Button
                     size="sm"
                     variant="outline"
-                    class="cursor-pointer"
                     onclick={() => setIgnored(item, false)}
                   >
                     <Eye class="size-4" />
@@ -646,7 +639,6 @@
                   <Button
                     size="sm"
                     variant="outline"
-                    class="cursor-pointer"
                     onclick={() => setIgnored(item, true)}
                   >
                     <EyeOff class="size-4" />
@@ -656,7 +648,6 @@
                 <Button
                   size="sm"
                   variant="destructive"
-                  class="cursor-pointer"
                   disabled={!canDelete(item)}
                   onclick={() => openConfirm([item])}
                 >

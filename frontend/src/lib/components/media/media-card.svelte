@@ -298,7 +298,7 @@
                   <Button
                     {...props}
                     size="icon-sm"
-                    class="cursor-pointer text-gray-200 bg-primary/75 hover:bg-primary transition-colors"
+                    class="text-gray-200 bg-primary/75 hover:bg-primary transition-colors"
                   >
                     <EllipsisVertical class="size-4" />
                   </Button>
@@ -327,7 +327,7 @@
           <!-- info (always visible) -->
           <Button
             size="icon-sm"
-            class="cursor-pointer text-gray-200 bg-primary/75 hover:bg-primary transition-colors"
+            class="text-gray-200 bg-primary/75 hover:bg-primary transition-colors"
             onclick={handleInfoClick}
           >
             <Info class="size-4" />

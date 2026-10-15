@@ -140,7 +140,7 @@
         value={String(selectedIndex)}
         onValueChange={(v) => (selectedIndex = Number(v))}
       >
-        <Select.Trigger class="cursor-pointer text-foreground">
+        <Select.Trigger class="text-foreground">
           {#if selected}
             <span class="flex items-center gap-2">
               {selected.version}
@@ -157,7 +157,7 @@
         </Select.Trigger>
         <Select.Content>
           {#each releases as release, i}
-            <Select.Item value={String(i)} class="cursor-pointer">
+            <Select.Item value={String(i)}>
               <span class="flex items-center gap-2">
                 {release.version}
                 {#if release.version === currentVersion}

@@ -76,7 +76,7 @@
       aria-label="Select libraries"
       aria-expanded={open}
       {disabled}
-      class="h-8 w-full min-w-0 justify-between bg-background px-3 text-sm font-normal text-foreground cursor-pointer"
+      class="h-8 w-full min-w-0 justify-between bg-background px-3 text-sm font-normal text-foreground "
     >
       <span
         class={`flex min-w-0 items-center gap-1.5 truncate ${triggerText ? "" : "text-muted-foreground"}`}

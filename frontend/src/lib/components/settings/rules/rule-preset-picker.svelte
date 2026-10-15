@@ -137,7 +137,7 @@
           {#each catalog as preset (preset.id)}
             <button
               type="button"
-              class="rounded-lg border border-border bg-card p-4 text-left hover:border-primary focus-visible:outline-2 focus-visible:outline-primary cursor-pointer"
+              class="rounded-lg border border-border bg-card p-4 text-left hover:border-primary focus-visible:outline-2 focus-visible:outline-primary"
               onclick={() => selectPreset(preset)}
             >
               <span class="block font-semibold text-foreground"
@@ -196,7 +196,7 @@
           <fieldset class="space-y-2">
             <legend class="mb-2 font-medium">Libraries (required)</legend>
             {#each matchingLibraries as library (`${library.serviceConfigId}:${library.libraryId}`)}
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
+              <label class="flex items-center gap-2 text-sm">
                 <Checkbox
                   checked={libraryIds.includes(library.libraryId)}
                   onCheckedChange={(checked) => {
@@ -236,9 +236,7 @@
               {:else}
                 <div class="max-h-40 overflow-y-auto space-y-2">
                   {#each users as user (user.username)}
-                    <label
-                      class="flex items-center gap-2 text-sm cursor-pointer"
-                    >
+                    <label class="flex items-center gap-2 text-sm">
                       <Checkbox
                         checked={usernames.includes(user.username)}
                         onCheckedChange={(checked) => {

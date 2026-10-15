@@ -691,7 +691,6 @@
             type="button"
             variant="secondary"
             size="sm"
-            class="cursor-pointer"
             onclick={clearActivityFilters}
             aria-label="Clear recent activity filters"
           >
@@ -961,7 +960,6 @@
           type="button"
           variant="secondary"
           size="sm"
-          class="cursor-pointer"
           onclick={clearHistoryFilters}
           aria-label="Clear reclaim feed search and filters"
         >
