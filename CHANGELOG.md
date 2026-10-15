@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Smoother Storage refresh.** Existing metrics stay visible during refresh, with a full Last updated timestamp. A failed refresh retains the previous values and marks them as previous metrics alongside the error.
 - **Show/hide entered API keys.** Service configuration forms have a visibility toggle for newly entered keys or tokens. Saved secrets are never fetched or revealed, and clearing the field restores masking.
 - **Copy visible logs.** Settings → Logs can copy the currently displayed filtered entries, with a manual-copy dialog when browser clipboard access is unavailable. Download still saves the full selected log file.
 - **Clear filters on History and Protected.** Reset search and media filters on the reclaim feed and Protected page, or status/category filters on recent activity. Empty states now distinguish no recorded items from no filter matches. Sorting and page-size preferences are preserved.

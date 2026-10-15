@@ -9,10 +9,12 @@
   import { formatFileSize } from "$lib/utils/formatters";
   import { toTitleCase } from "$lib/utils/strings";
   import type { StorageResponse } from "$lib/types/shared";
+  import { formatDateTimeToLocaleString } from "$lib/utils/date";
 
   let data = $state<StorageResponse | null>(null);
   let loading = $state(true);
   let error = $state("");
+  let lastUpdated = $state<string | null>(null);
 
   const usedPercent = (used: number, total: number) =>
     total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0;
@@ -28,13 +30,14 @@
     toTitleCase(action.replace(/_/g, " "));
 
   async function load() {
+    if (loading && data) return;
     loading = true;
     error = "";
     try {
       data = await get_api<StorageResponse>("/api/storage");
+      lastUpdated = new Date().toISOString();
     } catch (e) {
       error = e instanceof Error ? e.message : "Failed to load storage metrics";
-      data = null;
     } finally {
       loading = false;
     }
@@ -58,15 +61,26 @@
           cleanup has reclaimed
         </p>
       </div>
-      <Button variant="outline" size="sm" onclick={load} disabled={loading}>
-        <RotateCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
-        Refresh
-      </Button>
+      <div class="flex flex-wrap items-center gap-3">
+        {#if lastUpdated}
+          <p class="text-xs text-muted-foreground" role="status">
+            Last updated: {formatDateTimeToLocaleString(lastUpdated, {
+              includeTimezone: true,
+            })}
+            {#if error}
+              · Showing previous metrics{/if}
+          </p>
+        {/if}
+        <Button variant="outline" size="sm" onclick={load} disabled={loading}>
+          <RotateCw class="h-4 w-4 {loading ? 'animate-spin' : ''}" />
+          Refresh
+        </Button>
+      </div>
     </div>
 
     <ErrorBox {error} />
 
-    {#if loading}
+    {#if loading && !data}
       <div
         class="bg-card rounded-lg border border-border p-8 text-center text-muted-foreground"
       >
