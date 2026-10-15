@@ -33,6 +33,7 @@
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import Link2 from "@lucide/svelte/icons/link-2";
   import X from "@lucide/svelte/icons/x";
+  import Search from "@lucide/svelte/icons/search";
 
   interface Props {
     svgIcon: Component | null;
@@ -40,6 +41,27 @@
   let { svgIcon }: Props = $props();
 
   let users: User[] = $state([]);
+  let userSearch = $state("");
+  let roleFilter = $state<"all" | UserRole>("all");
+  const hasUserFilters = $derived(
+    userSearch.length > 0 || roleFilter !== "all",
+  );
+  const filteredUsers = $derived.by(() => {
+    const query = userSearch.trim().toLowerCase();
+    return users.filter((user) => {
+      if (roleFilter !== "all" && user.role !== roleFilter) return false;
+      return (
+        !query ||
+        [user.username, user.display_name, user.email].some((value) =>
+          (value ?? "").toLowerCase().includes(query),
+        )
+      );
+    });
+  });
+  const clearUserFilters = () => {
+    userSearch = "";
+    roleFilter = "all";
+  };
   let mediaIdentities: MediaIdentityItem[] = $state([]);
   let mediaIdentitiesLoading = $state(false);
   let mediaIdentitiesError = $state("");
@@ -465,6 +487,55 @@
 
 <ErrorBox error={profileError} />
 
+<div class="mb-3 flex flex-wrap items-center gap-2">
+  <div class="relative w-full sm:w-auto sm:min-w-64 sm:flex-1">
+    <Search
+      class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+      aria-hidden="true"
+    />
+    <Input
+      type="search"
+      bind:value={userSearch}
+      placeholder="Search username, display name, or email…"
+      aria-label="Search users by username, display name, or email"
+      class="pl-9 bg-card"
+    />
+  </div>
+  <Select.Root type="single" bind:value={roleFilter}>
+    <Select.Trigger
+      class="w-36 bg-card text-card-foreground cursor-pointer"
+      aria-label="Filter users by role"
+    >
+      {roleFilter === UserRole.Admin
+        ? "Admins"
+        : roleFilter === UserRole.User
+          ? "Users"
+          : "All roles"}
+    </Select.Trigger>
+    <Select.Content class="bg-card">
+      <Select.Item value="all" label="All roles">All roles</Select.Item>
+      <Select.Item value={UserRole.Admin} label="Admins">Admins</Select.Item>
+      <Select.Item value={UserRole.User} label="Users">Users</Select.Item>
+    </Select.Content>
+  </Select.Root>
+  {#if hasUserFilters}
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      class="cursor-pointer"
+      onclick={clearUserFilters}
+    >
+      Clear filters
+    </Button>
+  {/if}
+</div>
+{#if !loading && !profileError && users.length > 0}
+  <p class="mb-3 text-sm text-muted-foreground" role="status">
+    Showing {filteredUsers.length} of {users.length} users
+  </p>
+{/if}
+
 <!-- users table -->
 <div class="bg-card rounded-lg border border-border overflow-x-auto">
   {#if loading}
@@ -477,6 +548,11 @@
   {:else if users.length === 0}
     <div class="p-8 text-center text-muted-foreground">
       No users found. Create your first user to get started.
+    </div>
+  {:else if filteredUsers.length === 0}
+    <div class="p-8 text-center text-muted-foreground">
+      No users match your search and filters. Clear the filters or try a
+      different search.
     </div>
   {:else}
     <table class="w-full">
@@ -505,7 +581,7 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-border">
-        {#each users as user (user.id)}
+        {#each filteredUsers as user (user.id)}
           <tr class="hover:bg-muted/30 transition-colors">
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex items-center gap-3">

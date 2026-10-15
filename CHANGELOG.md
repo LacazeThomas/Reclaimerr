@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **User search and role filter.** Find accounts under **Settings → Users** by username, display name, or email, ignoring case, and filter by Admin/User role. Includes a matching-user count and **Clear filters**.
 - **Clearer task controls and timestamps.** Queued or running tasks disable **Run now**, and manual-run feedback distinguishes newly queued work from an already active task. Hover over **Last run** or **Next run** to see the full date, time including seconds, and browser timezone, using your selected date format.
 - **Rule search and filters.** Search rule names and descriptions, filter by enabled status and target scope, and combine these with the existing outcome filter. Includes a matching-rule count and **Clear filters**.
 - **Three new rule presets.** Protect recent imports for 30 days, protect recent playback for 14 days (including unfinished viewing), or review old unwatched movies when their disk has less than 10% free space. Protection presets support movies or whole shows. All start disabled with automatic deletion off.
