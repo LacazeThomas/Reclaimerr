@@ -11,6 +11,8 @@ Rules determine which media becomes a reclaim candidate or receives an automated
 
 Use rule preview before saving or running a cleanup scan. Preview shows the items that match and the actual values used for each matching condition.
 
+Use the search box on **Rules** to find names or descriptions, ignoring case. Combine it with status, scope, and outcome filters to narrow the list. The count shows how many rules match; **Clear filters** resets the search and all filters. These controls only change the displayed list; **Export All** still exports every rule.
+
 ## Start from a preset
 
 1. Open **Rules → Add from preset** and choose a starter.

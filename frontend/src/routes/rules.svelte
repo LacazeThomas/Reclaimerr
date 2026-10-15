@@ -4,6 +4,7 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { Switch } from "$lib/components/ui/switch/index.js";
+  import { Input } from "$lib/components/ui/input/index.js";
   import Spinner from "$lib/components/ui/spinner/spinner.svelte";
   import * as AlertDialog from "$lib/components/ui/alert-dialog/index.js";
   import * as Select from "$lib/components/ui/select/index.js";
@@ -18,6 +19,7 @@
   import Tv from "@lucide/svelte/icons/tv";
   import ListChecks from "@lucide/svelte/icons/list-checks";
   import ShieldCheck from "@lucide/svelte/icons/shield-check";
+  import Search from "@lucide/svelte/icons/search";
   import { toast } from "svelte-sonner";
   import {
     MediaType,
@@ -44,13 +46,54 @@
   let presetTitle = $state("");
   let availableLibraries = $state<LibraryType[]>([]);
   let outcomeFilter = $state<"all" | "candidate" | "protect">("all");
+  let searchQuery = $state("");
+  let statusFilter = $state<"all" | "enabled" | "disabled">("all");
+  let scopeFilter = $state<"all" | NonNullable<ReclaimRule["target_scope"]>>(
+    "all",
+  );
+  const scopeOptions = [
+    { value: "all", label: "All scopes" },
+    { value: "movie_version", label: "Movie versions" },
+    { value: "series", label: "Whole series" },
+    { value: "season", label: "Seasons" },
+    { value: "episode", label: "Episodes" },
+  ] as const;
+  const normalizedSearch = $derived(searchQuery.trim().toLowerCase());
+  const hasActiveFilters = $derived(
+    searchQuery.length > 0 ||
+      statusFilter !== "all" ||
+      scopeFilter !== "all" ||
+      outcomeFilter !== "all",
+  );
+
+  const clearFilters = () => {
+    searchQuery = "";
+    statusFilter = "all";
+    scopeFilter = "all";
+    outcomeFilter = "all";
+  };
 
   const filteredRules = $derived(
     rules.filter((rule) => {
-      if (outcomeFilter === "all") return true;
+      if (
+        normalizedSearch &&
+        !rule.name.toLowerCase().includes(normalizedSearch) &&
+        !(rule.description ?? "").toLowerCase().includes(normalizedSearch)
+      )
+        return false;
+      if (
+        statusFilter !== "all" &&
+        rule.enabled !== (statusFilter === "enabled")
+      ) {
+        return false;
+      }
+      const scope =
+        rule.target_scope ??
+        (rule.media_type === MediaType.Movie ? "movie_version" : "series");
+      if (scopeFilter !== "all" && scope !== scopeFilter) return false;
       const outcome =
         rule.action?.outcome === "protect" ? "protect" : "candidate";
-      return outcome === outcomeFilter;
+      return outcomeFilter === "all" || outcome === outcomeFilter;
     }),
   );
 
@@ -517,7 +560,9 @@
       />
     {:else}
       <div class="space-y-4">
-        <div class="flex justify-between items-center mt-3 mb-3">
+        <div
+          class="flex flex-wrap justify-between items-center gap-4 mt-3 mb-3"
+        >
           <div class="flex items-center flex-wrap gap-3 text-sm">
             <span class="text-muted-foreground">Scan task:</span>
             <Button
@@ -542,29 +587,6 @@
           </div>
 
           <div class="flex flex-wrap justify-end items-center gap-2">
-            <Select.Root type="single" bind:value={outcomeFilter}>
-              <Select.Trigger
-                class="w-40 bg-card text-card-foreground cursor-pointer"
-                aria-label="Filter rules by outcome"
-              >
-                {outcomeFilter === "protect"
-                  ? "Protection rules"
-                  : outcomeFilter === "candidate"
-                    ? "Candidate rules"
-                    : "All outcomes"}
-              </Select.Trigger>
-              <Select.Content class="bg-card">
-                <Select.Item value="all" label="All outcomes">
-                  All outcomes
-                </Select.Item>
-                <Select.Item value="candidate" label="Candidate rules">
-                  Candidate rules
-                </Select.Item>
-                <Select.Item value="protect" label="Protection rules">
-                  Protection rules
-                </Select.Item>
-              </Select.Content>
-            </Select.Root>
             <input
               type="file"
               accept=".json"
@@ -610,12 +632,101 @@
           </div>
         </div>
 
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative w-full sm:w-auto sm:min-w-64 sm:flex-1">
+            <Search
+              class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              type="search"
+              bind:value={searchQuery}
+              placeholder="Search names and descriptions…"
+              aria-label="Search rule names and descriptions"
+              class="pl-9 bg-card"
+            />
+          </div>
+          <Select.Root type="single" bind:value={statusFilter}>
+            <Select.Trigger
+              class="w-36 bg-card text-card-foreground cursor-pointer"
+              aria-label="Filter rules by status"
+            >
+              {statusFilter === "enabled"
+                ? "Enabled"
+                : statusFilter === "disabled"
+                  ? "Disabled"
+                  : "All statuses"}
+            </Select.Trigger>
+            <Select.Content class="bg-card">
+              <Select.Item value="all" label="All statuses"
+                >All statuses</Select.Item
+              >
+              <Select.Item value="enabled" label="Enabled">Enabled</Select.Item>
+              <Select.Item value="disabled" label="Disabled"
+                >Disabled</Select.Item
+              >
+            </Select.Content>
+          </Select.Root>
+          <Select.Root type="single" bind:value={scopeFilter}>
+            <Select.Trigger
+              class="w-40 bg-card text-card-foreground cursor-pointer"
+              aria-label="Filter rules by scope"
+            >
+              {scopeOptions.find((option) => option.value === scopeFilter)
+                ?.label ?? "All scopes"}
+            </Select.Trigger>
+            <Select.Content class="bg-card">
+              {#each scopeOptions as option}
+                <Select.Item value={option.value} label={option.label}
+                  >{option.label}</Select.Item
+                >
+              {/each}
+            </Select.Content>
+          </Select.Root>
+          <Select.Root type="single" bind:value={outcomeFilter}>
+            <Select.Trigger
+              class="w-40 bg-card text-card-foreground cursor-pointer"
+              aria-label="Filter rules by outcome"
+            >
+              {outcomeFilter === "protect"
+                ? "Protection rules"
+                : outcomeFilter === "candidate"
+                  ? "Candidate rules"
+                  : "All outcomes"}
+            </Select.Trigger>
+            <Select.Content class="bg-card">
+              <Select.Item value="all" label="All outcomes"
+                >All outcomes</Select.Item
+              >
+              <Select.Item value="candidate" label="Candidate rules"
+                >Candidate rules</Select.Item
+              >
+              <Select.Item value="protect" label="Protection rules"
+                >Protection rules</Select.Item
+              >
+            </Select.Content>
+          </Select.Root>
+          {#if hasActiveFilters}
+            <Button
+              variant="secondary"
+              size="sm"
+              onclick={clearFilters}
+              class="cursor-pointer">Clear filters</Button
+            >
+          {/if}
+        </div>
+        {#if rules.length > 0}
+          <p class="text-sm text-muted-foreground" role="status">
+            Showing {filteredRules.length} of {rules.length} rules
+          </p>
+        {/if}
+
         <div class="space-y-4">
           {#if !isSynced}
             <Notice type="warning" title="Missing Media Data">
-              Select at least one library on your main media server and complete
-              <strong>Sync Media</strong> in <strong>Tasks</strong> before using rules.
-              If a sync is already running, wait for it to finish.
+              Configure a main media server and complete
+              <strong>Sync Media</strong> in <strong>Tasks</strong> to load its libraries
+              before using rules. If a sync is already running, wait for it to finish.
             </Notice>
           {/if}
 
@@ -638,8 +749,8 @@
               class="bg-card rounded-lg border border-border p-10 text-center"
             >
               <p class="text-muted-foreground">
-                No {outcomeFilter === "protect" ? "protection" : "candidate"} rules
-                match this filter.
+                No rules match your search and filters. Clear the filters or try
+                a different search.
               </p>
             </div>
           {:else}

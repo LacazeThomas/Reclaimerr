@@ -14,19 +14,19 @@ from backend.enums import MediaType, Service
 
 @pytest.mark.parametrize(
     "media_types",
-    [[MediaType.MOVIE], [MediaType.SERIES], [MediaType.MOVIE, MediaType.SERIES]],
+    [[], [MediaType.MOVIE], [MediaType.SERIES], [MediaType.MOVIE, MediaType.SERIES]],
 )
 @pytest.mark.parametrize(
     "synced,selected,enabled,is_main,expected",
     [
         (True, True, True, True, True),
         (False, True, True, True, False),
-        (True, False, True, True, False),
+        (True, False, True, True, True),
         (True, True, False, True, False),
         (True, True, True, False, False),
     ],
 )
-def test_readiness_uses_main_sync_and_selected_libraries_even_when_empty(
+def test_readiness_uses_main_sync_and_libraries_regardless_of_legacy_selection(
     media_types, synced, selected, enabled, is_main, expected
 ):
     async def run():
@@ -59,7 +59,7 @@ def test_readiness_uses_main_sync_and_selected_libraries_even_when_empty(
             )
             await db.commit()
             result = await check_synced_rules(None, db)
-            assert result["synced"] is expected
+            assert result["synced"] is (expected if media_types else False)
             assert result["movies"] == result["series"] == 0
         await engine.dispose()
 
