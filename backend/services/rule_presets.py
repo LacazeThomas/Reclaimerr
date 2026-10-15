@@ -97,6 +97,53 @@ def rule_presets() -> list[RulePreset]:
     """
     return [
         _preset(
+            "protect-recent-imports",
+            "Protect recent imports",
+            "Protect current movie copies or whole shows added within the last "
+            "30 days. For shows this uses the show's added date, not the latest "
+            "episode import. Unknown added dates do not match.",
+            "movie_version",
+            [_condition("media.days_since_added", "less_than", 30)],
+            outcome="protect",
+            target_scopes=["movie_version", "series"],
+            prerequisites=[
+                "Sync added dates before previewing. Choose movies or whole shows.",
+                "Whole-show protection does not restart when a new episode is added.",
+            ],
+        ),
+        _preset(
+            "disk-pressure-unwatched-movies",
+            "Disk-pressure cleanup",
+            "Movie copies added more than 180 days ago with no recorded viewing, "
+            "on a disk with less than 10% free space. Unknown disk space does not "
+            "match. Missing watch history is not proof that nobody watched a movie.",
+            "movie_version",
+            [
+                _condition("media.days_since_added", "greater_than", 180),
+                _condition("watch.never_watched", "is_true"),
+                _condition("disk.free_percent", "less_than", 10),
+            ],
+            prerequisites=[
+                "Sync movie libraries and watch state before previewing.",
+                "Disk space must resolve for each file through Arr mounts/path mappings or local storage.",
+            ],
+        ),
+        _preset(
+            "protect-recent-playback",
+            "Protect recent playback",
+            "Protect current movie copies or whole shows with recorded playback "
+            "activity within the last 14 days, including unfinished viewing. "
+            "Unknown activity does not match.",
+            "movie_version",
+            [_condition("playback.days_since_last_activity", "less_than", 14)],
+            outcome="protect",
+            target_scopes=["movie_version", "series"],
+            prerequisites=[
+                "Configure Tautulli or Tracearr and sync dated playback history.",
+                "Activity follows the configured minimum playback duration. Choose movies or whole shows.",
+            ],
+        ),
+        _preset(
             "old-unwatched-movies",
             "Old unwatched movies",
             "Movie versions added more than 180 days ago with no recorded viewing "

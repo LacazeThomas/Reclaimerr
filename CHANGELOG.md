@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Three new rule presets.** Protect recent imports for 30 days, protect recent playback for 14 days (including unfinished viewing), or review old unwatched movies when their disk has less than 10% free space. Protection presets support movies or whole shows. All start disabled with automatic deletion off.
 - **Import list exclusions in rule actions.** New **Unmonitor + Delete Files + Add List Exclusion** action under **Rules → Radarr/Sonarr Configuration** keeps the Arr entry while removing files. For Sonarr season rules, an exclusion is added only when the show has ended and its latest known regular season was removed; announced seasons count, specials do not. A combined **Monitor New Seasons OR Add List Exclusion** action excludes ended shows, otherwise enabling series and new-season monitoring when the latest season is removed. Both actions support Move Instead of Delete, work independently of the global exclusion setting, and record exclusion results or failures in History.
 - **Bulk user import from CSV.** New **Import CSV** button under **Settings → Users**, with a downloadable template, validation preview, and bulk account creation. Matches existing accounts by email first, then username, ignoring case; existing accounts are skipped and conflicts block import. New users receive default page access and the Request permission. Passwords are optional for external sign-in; supplied passwords must be changed at first local login.
 
@@ -24,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- The Rules page's **Missing Media Data** warning now uses the enabled main server's completed sync and selected libraries, so movie-only, series-only, and successfully synced empty libraries no longer trigger a false warning.
 - Plex partial scans after deletion now find the correct library using its configured locations, so removed media can disappear from Plex without waiting for a scheduled scan. Path matching also distinguishes sibling folders such as `/data/tv` and `/data/tv2` (#431).
 - Incompatible Sonarr episode inventories, import dates, and linked-server watch data are no longer merged by season/episode number. Sync clears stale Sonarr inventory and import dates when ordering is incompatible, while retaining series references and tags.
 - Sonarr season-monitoring updates no longer mutate the fetched series data while preparing requests, preserving episode ordering, language, and unrelated settings.

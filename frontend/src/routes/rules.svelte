@@ -285,11 +285,9 @@
         libraries: number;
         movies: number;
         series: number;
+        synced: boolean;
       }>("/api/rules/check-synced");
-      isSynced =
-        response.libraries !== 0 &&
-        response.movies !== 0 &&
-        response.series !== 0;
+      isSynced = response.synced;
     } catch (err: any) {
       console.error("Error checking sync status:", err);
     }
@@ -615,10 +613,9 @@
         <div class="space-y-4">
           {#if !isSynced}
             <Notice type="warning" title="Missing Media Data">
-              Media data is still syncing or hasn't been synced yet. Rules may
-              not work correctly until sync is complete. You can start the sync
-              if not already in progress in <strong>Tasks</strong>, or wait and
-              check back later.
+              Select at least one library on your main media server and complete
+              <strong>Sync Media</strong> in <strong>Tasks</strong> before using rules.
+              If a sync is already running, wait for it to finish.
             </Notice>
           {/if}
 

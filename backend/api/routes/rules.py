@@ -1803,13 +1803,38 @@ async def delete_rule(
 async def check_synced_rules(
     _admin: Annotated[User, Depends(require_admin)],
     db: AsyncSession = Depends(get_db),
-) -> dict[str, int]:
-    """Return the count of synced libraries, movies, and series."""
+) -> dict[str, int | bool]:
+    """Report readiness from the enabled main server's completed sync."""
     lib_count = await db.scalar(select(func.count(ServiceMediaLibrary.id)))
     movie_count = await db.scalar(select(func.count(Movie.id)))
     series_count = await db.scalar(select(func.count(Series.id)))
+    main_server = await db.scalar(
+        select(ServiceConfig).where(
+            ServiceConfig.service_type.in_(
+                [Service.PLEX, Service.JELLYFIN, Service.EMBY]
+            ),
+            ServiceConfig.enabled.is_(True),
+            ServiceConfig.is_main.is_(True),
+        )
+    )
+    selected_libraries = 0
+    if main_server is not None:
+        selected_libraries = (
+            await db.scalar(
+                select(func.count(ServiceMediaLibrary.id)).where(
+                    ServiceMediaLibrary.service_config_id == main_server.id,
+                    ServiceMediaLibrary.selected.is_(True),
+                )
+            )
+            or 0
+        )
     return {
         "libraries": lib_count or 0,
         "movies": movie_count or 0,
         "series": series_count or 0,
+        "synced": bool(
+            main_server is not None
+            and main_server.last_synced_at is not None
+            and selected_libraries
+        ),
     }

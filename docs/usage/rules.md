@@ -14,7 +14,7 @@ Use rule preview before saving or running a cleanup scan. Preview shows the item
 ## Start from a preset
 
 1. Open **Rules → Add from preset** and choose a starter.
-2. Select the applicable libraries. Favorites protection offers a Movies/Whole shows choice; save separate rules to cover both. Fully watched seasons and finished ended shows require selected users and enabled Sonarr; watched requests requires enabled Seerr.
+2. Select the applicable libraries. Favorites, recent-import, and recent-playback protection offer a Movies/Whole shows choice; save separate rules to cover both. Fully watched seasons and finished ended shows require selected users and enabled Sonarr; watched requests requires enabled Seerr.
 3. Choose **Open in editor**, adjust the conditions and action, and use **Preview Matches**.
 4. Save the rule. It starts disabled, with automatic deletion, moves, and Arr tagging off unless you explicitly change those settings.
 
@@ -25,6 +25,9 @@ Use rule preview before saving or running a cleanup scan. Preview shows the item
 | Fully watched seasons | Every selected user completed the regular season; last recorded playback activity across all users was more than 30 days ago |
 | Keep the newest two seasons | Regular seasons with at least two newer known regular seasons, ordered by season number |
 | Large movies for review | Imported movie file size greater than 40 GiB |
+| Protect recent imports | Current movie copies or whole shows added less than 30 days ago; whole shows use the show's added date, not the latest episode import |
+| Disk-pressure cleanup | Current movie copies added more than 180 days ago with no recorded viewing, on a disk with less than 10% free space |
+| Protect recent playback | Current movie copies or whole shows with recorded playback activity less than 14 days ago, including unfinished viewing |
 | Protect favorites and watchlists | Protect movies or whole shows favorited/watchlisted by any user in the imported data |
 | Finished, ended shows | Sonarr status is ended; every selected user completed all regular seasons; last playback activity across all users was more than 90 days ago |
 | Requested movies already watched | An active request exists; at least one requester completed the movie; last playback activity across all users was more than 30 days ago |
@@ -40,6 +43,8 @@ Finished ended shows uses Sonarr's full regular-episode inventory for completion
 Watched requests uses **Seerr requester has watched**: one requester's completion is enough, and it need not occur after the request. Other requesters may still be waiting to watch. Configure requester/watch-user identities under **Settings → User Signals** and preview before enabling. Unknown request, completion, or activity does not match.
 
 Saved rules are independent copies. Edit and import/export them normally; future bundled preset updates never overwrite them.
+
+Recent-import protection uses the target's added date. New episodes do not restart a whole show's 30-day window. Recent-playback protection requires dated Tautulli or Tracearr history and follows the configured minimum playback duration. Unknown added dates or activity do not match these presets. Disk-pressure cleanup requires resolvable disk statistics from local storage or Arr mounts/path mappings; unknown disk space does not match. Preview the file-to-disk mapping before enabling it.
 
 ## Rule Outcomes
 

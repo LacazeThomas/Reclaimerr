@@ -14,6 +14,7 @@ from backend.api.routes.rules import (
     update_rule,
 )
 from backend.core.rule_engine import (
+    DiskStatsResolver,
     FavoritesRuleDataResolver,
     PlaybackHistoryResolver,
     SeerrRequestResolver,
@@ -82,6 +83,7 @@ def _movie_match(
     views=0,
     size=41 * 1024**3,
     library="library",
+    path=None,
 ):
     now = datetime.now(UTC)
     movie = Movie(title="Example", tmdb_id=1, size=size, view_count=views)
@@ -97,6 +99,7 @@ def _movie_match(
         library_id=library,
         library_name="Movies",
         size=size,
+        path=path,
         added_at=movie.added_at,
     )
     version.id = 1
@@ -239,7 +242,7 @@ def test_catalog_does_not_save_and_saved_rules_use_normal_edit_and_import():
         )
         async with sessions() as db:
             catalog = await get_rule_presets(admin)
-            assert len({p.id for p in catalog}) == 8
+            assert len({p.id for p in catalog}) == 11
             assert all(p.version == 1 for p in catalog)
             # Catalog browsing and preparing/canceling a draft have no writes.
             draft = _draft("old-unwatched-movies")
@@ -412,3 +415,88 @@ def test_saved_favorites_preset_retains_protection_outcome():
         await engine.dispose()
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    "age,expected", [(0, True), (29, True), (30, False), (60, False)]
+)
+@pytest.mark.parametrize("scope", ["movie_version", "series"])
+def test_recent_import_protection_uses_target_added_date(age, expected, scope):
+    if scope == "movie_version":
+        assert _movie_match("protect-recent-imports", age=age) is expected
+        assert not _movie_match("protect-recent-imports", age=age, library="other")
+    else:
+        series = _series()
+        series.added_at = datetime.now(UTC) - timedelta(days=age)
+        rule = _rule("protect-recent-imports")
+        rule.target_scope = scope
+        rule.media_type = MediaType.SERIES
+        assert (
+            evaluate_advanced_rule(rule, target_scope=scope, series=series)[0]
+            is expected
+        )
+        series.added_at = None
+        assert not evaluate_advanced_rule(rule, target_scope=scope, series=series)[0]
+
+
+@pytest.mark.parametrize(
+    "activity,expected", [(0, True), (13, True), (14, False), (None, False)]
+)
+@pytest.mark.parametrize("scope", ["movie_version", "series"])
+def test_recent_playback_protection_includes_unfinished_activity(
+    scope, activity, expected
+):
+    token = PlaybackHistoryResolver._ctx.set(
+        PlaybackHistoryResolver(
+            {(scope, 1): {"playback.days_since_last_activity": activity}}
+            if activity is not None
+            else {}
+        )
+    )
+    try:
+        if scope == "movie_version":
+            assert _movie_match("protect-recent-playback") is expected
+        else:
+            series = _series()
+            series.id = 1
+            rule = _rule("protect-recent-playback")
+            rule.target_scope = scope
+            rule.media_type = MediaType.SERIES
+            assert (
+                evaluate_advanced_rule(rule, target_scope=scope, series=series)[0]
+                is expected
+            )
+    finally:
+        PlaybackHistoryResolver._ctx.reset(token)
+
+
+@pytest.mark.parametrize(
+    "free,kwargs,expected",
+    [
+        (9, {}, True),
+        (10, {}, False),
+        (50, {}, False),
+        (None, {}, False),
+        (9, {"age": 179}, False),
+        (9, {"views": 1}, False),
+        (9, {"library": "other"}, False),
+    ],
+)
+def test_disk_pressure_requires_low_disk_old_copy_and_no_viewing(
+    monkeypatch, free, kwargs, expected
+):
+    monkeypatch.setattr(
+        DiskStatsResolver,
+        "resolve",
+        lambda *a, **k: (9, free) if free is not None else None,
+    )
+    token = DiskStatsResolver._ctx.set(DiskStatsResolver())
+    try:
+        assert (
+            _movie_match(
+                "disk-pressure-unwatched-movies", path="/remote/movie.mkv", **kwargs
+            )
+            is expected
+        )
+    finally:
+        DiskStatsResolver._ctx.reset(token)
