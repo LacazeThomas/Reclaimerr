@@ -1817,13 +1817,12 @@ async def check_synced_rules(
             ServiceConfig.is_main.is_(True),
         )
     )
-    selected_libraries = 0
+    main_libraries = 0
     if main_server is not None:
-        selected_libraries = (
+        main_libraries = (
             await db.scalar(
                 select(func.count(ServiceMediaLibrary.id)).where(
                     ServiceMediaLibrary.service_config_id == main_server.id,
-                    ServiceMediaLibrary.selected.is_(True),
                 )
             )
             or 0
@@ -1835,6 +1834,6 @@ async def check_synced_rules(
         "synced": bool(
             main_server is not None
             and main_server.last_synced_at is not None
-            and selected_libraries
+            and main_libraries
         ),
     }
