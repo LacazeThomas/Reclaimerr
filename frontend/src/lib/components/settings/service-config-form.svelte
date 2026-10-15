@@ -2,6 +2,9 @@
   import type { Component } from "svelte";
   import { Switch } from "$lib/components/ui/switch/index.js";
   import { Input } from "$lib/components/ui/input/index.js";
+  import { Button } from "$lib/components/ui/button/index.js";
+  import Eye from "@lucide/svelte/icons/eye";
+  import EyeOff from "@lucide/svelte/icons/eye-off";
 
   interface Props {
     tabLabel: string;
@@ -42,6 +45,10 @@
     extraSettings = {},
     onchange,
   }: Props = $props();
+  let showApiKey = $state(false);
+  $effect(() => {
+    if (!apiKey) showApiKey = false;
+  });
 
   function dispatchChange(field: string, value: any) {
     if (onchange) {
@@ -152,16 +159,34 @@
     <label for="apiKey" class="block text-sm font-medium text-foreground mb-2"
       >{apiKeyLabel}</label
     >
-    <Input
-      type="password"
-      name="apiKey"
-      value={apiKey}
-      oninput={(e) => dispatchChange("apiKey", e.currentTarget.value)}
-      placeholder={apiKeyIsSet
-        ? `Leave blank to keep existing ${apiKeyLabel.toLowerCase().replace("api", "API")}`
-        : `Enter your ${apiKeyLabel.toLowerCase().replace("api", "API")}`}
-      class="input-hover-el text-foreground placeholder:text-muted-foreground"
-    />
+    <div class="relative">
+      <Input
+        id="apiKey"
+        type={showApiKey ? "text" : "password"}
+        name="apiKey"
+        value={apiKey}
+        oninput={(e) => dispatchChange("apiKey", e.currentTarget.value)}
+        placeholder={apiKeyIsSet
+          ? `Leave blank to keep existing ${apiKeyLabel.toLowerCase().replace("api", "API")}`
+          : `Enter your ${apiKeyLabel.toLowerCase().replace("api", "API")}`}
+        class="pr-11 input-hover-el text-foreground placeholder:text-muted-foreground"
+      />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        class="absolute right-0 top-0 h-9 w-9 cursor-pointer"
+        disabled={!apiKey}
+        aria-label={`${showApiKey ? "Hide" : "Show"} entered ${apiKeyLabel}`}
+        aria-pressed={showApiKey}
+        title={`${showApiKey ? "Hide" : "Show"} entered ${apiKeyLabel}`}
+        onclick={() => (showApiKey = !showApiKey)}
+      >
+        {#if showApiKey}<EyeOff class="size-4" />{:else}<Eye
+            class="size-4"
+          />{/if}
+      </Button>
+    </div>
     <p class="mt-1 text-xs text-muted-foreground">
       Your {tabLabel}
       {apiKeyLabel.toLowerCase().replace("api", "API")} for authentication
