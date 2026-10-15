@@ -28,7 +28,7 @@ from backend.database.models import (
     ServiceConfig,
     User,
 )
-from backend.enums import MediaType, Service, UserRole
+from backend.enums import MediaType, Service, Task, UserRole
 from backend.models.settings import ServiceConfigUpdate
 
 
@@ -204,8 +204,10 @@ def test_save_disabled_unconfigured_service_without_api_key(monkeypatch):
         async with session_maker() as db_session:
             test_mock = AsyncMock(return_value=(True, ""))
             enqueue_mock = AsyncMock(return_value=SimpleNamespace(id=123))
+            refresh_mock = AsyncMock(return_value=True)
             monkeypatch.setattr(service_manager, "test_service", test_mock)
             monkeypatch.setattr(services, "enqueue_background_job", enqueue_mock)
+            monkeypatch.setattr(services, "enqueue_task_run", refresh_mock)
 
             response = await set_service_settings(
                 ServiceConfigUpdate(
@@ -225,6 +227,7 @@ def test_save_disabled_unconfigured_service_without_api_key(monkeypatch):
             assert response["data"]["api_key"] == ""
             test_mock.assert_not_awaited()
             enqueue_mock.assert_awaited_once()
+            refresh_mock.assert_awaited_once_with(Task.REFRESH_PLAYBACK_HISTORY)
 
             with pytest.raises(HTTPException) as exc:
                 await set_service_settings(
@@ -242,6 +245,7 @@ def test_save_disabled_unconfigured_service_without_api_key(monkeypatch):
             assert exc.value.status_code == 400
             assert exc.value.detail == "API key is required when enabling a service"
             test_mock.assert_not_awaited()
+            refresh_mock.assert_awaited_once_with(Task.REFRESH_PLAYBACK_HISTORY)
         await engine.dispose()
 
     asyncio.run(run())
