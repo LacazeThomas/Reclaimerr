@@ -85,13 +85,18 @@ const formatDateToLocaleString = (dateStr: string | null): string => {
  * Formats a date string using the selected date format and browser time format.
  * Timezone-less API strings are treated as UTC.
  */
-const formatDateTimeToLocaleString = (dateStr: string | null): string => {
+const formatDateTimeToLocaleString = (
+  dateStr: string | null,
+  { includeTimezone = false }: { includeTimezone?: boolean } = {},
+): string => {
   if (!dateStr) return "Unknown";
   try {
     const date = parseApiDate(dateStr);
     const time = new Intl.DateTimeFormat(undefined, {
       hour: "numeric",
       minute: "2-digit",
+      second: includeTimezone ? "2-digit" : undefined,
+      timeZoneName: includeTimezone ? "long" : undefined,
     }).format(date);
     return `${formatDateValue(date, get(dateFormat))} ${time}`;
   } catch {
