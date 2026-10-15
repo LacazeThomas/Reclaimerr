@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Clear filters on History and Protected.** Reset search and media filters on the reclaim feed and Protected page, or status/category filters on recent activity. Empty states now distinguish no recorded items from no filter matches. Sorting and page-size preferences are preserved.
+- **Labeled user actions.** User edit/delete buttons have tooltips and accessible names. The disabled self-delete action explains that you cannot delete your own account.
 - **User search and role filter.** Find accounts under **Settings → Users** by username, display name, or email, ignoring case, and filter by Admin/User role. Includes a matching-user count and **Clear filters**.
 - **Clearer task controls and timestamps.** Queued or running tasks disable **Run now**, and manual-run feedback distinguishes newly queued work from an already active task. Hover over **Last run** or **Next run** to see the full date, time including seconds, and browser timezone, using your selected date format.
 - **Rule search and filters.** Search rule names and descriptions, filter by enabled status and target scope, and combine these with the existing outcome filter. Includes a matching-rule count and **Clear filters**.

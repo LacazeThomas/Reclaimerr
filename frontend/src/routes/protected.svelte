@@ -1,5 +1,5 @@
 ﻿<script lang="ts">
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy, onMount, untrack } from "svelte";
   import { get_api, delete_api, put_api } from "$lib/api";
   import ErrorBox from "$lib/components/error-box.svelte";
   import CompactPagination from "$lib/components/compact-pagination.svelte";
@@ -71,6 +71,21 @@
   let removeSubmitting = $state(false);
 
   const entries = $derived(data?.items ?? []);
+  const hasFilters = $derived(
+    searchQuery.length > 0 || mediaTypeFilter !== "all",
+  );
+
+  const clearFilters = () => {
+    if (searchTimer) {
+      clearTimeout(searchTimer);
+      searchTimer = null;
+    }
+    const mediaTypeChanged = mediaTypeFilter !== "all";
+    searchQuery = "";
+    mediaTypeFilter = "all";
+    // Changing media type triggers the existing reload effect.
+    if (!mediaTypeChanged) void loadProtectedEntries(1);
+  };
 
   const canManageProtection = $derived.by(() => {
     const permissions = $auth.user?.permissions ?? [];
@@ -90,7 +105,7 @@
     mediaTypeFilter;
     perPage;
     if (mounted) {
-      loadProtectedEntries(1);
+      untrack(() => void loadProtectedEntries(1));
     }
   });
 
@@ -407,7 +422,7 @@
       </p>
     </div>
 
-    <div class="mb-4 flex flex-col sm:flex-row gap-2">
+    <div class="mb-4 flex flex-col sm:flex-row sm:flex-wrap gap-2">
       <div class="relative flex-1">
         <Search
           class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground"
@@ -523,6 +538,19 @@
       </div>
     </div>
 
+    {#if hasFilters}
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        class="mb-4 cursor-pointer"
+        onclick={clearFilters}
+        aria-label="Clear protected media search and filters"
+      >
+        Clear filters
+      </Button>
+    {/if}
+
     <!-- error box -->
     <ErrorBox {error} />
 
@@ -537,7 +565,9 @@
         </div>
       {:else if entries.length === 0}
         <div class="p-8 text-center text-muted-foreground">
-          No protected items found.
+          {hasFilters
+            ? "No protected items match your search and filters. Clear the filters or try a different search."
+            : "No items are protected yet."}
         </div>
       {:else}
         <table class="w-full">

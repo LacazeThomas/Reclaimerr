@@ -649,20 +649,41 @@
                     type="button"
                     size="icon"
                     class="rounded-full cursor-pointer"
+                    title={`Edit user ${user.username}`}
+                    aria-label={`Edit user ${user.username}`}
                     onclick={() => openEditModal(user)}><UserPen /></Button
                   >
                 {/if}
                 <!-- delete -->
                 {#if canManageUsers}
-                  <Button
-                    type="button"
-                    size="icon"
-                    class="rounded-full hover:bg-destructive-secondary bg-destructive 
+                  <span
+                    class="inline-flex"
+                    title={user.id === $auth.user?.id
+                      ? "You cannot delete your own account."
+                      : `Delete user ${user.username}`}
+                  >
+                    <Button
+                      type="button"
+                      size="icon"
+                      class="rounded-full hover:bg-destructive-secondary bg-destructive
                     text-destructive-foreground disabled:bg-muted disabled:text-muted-foreground 
                     disabled:cursor-not-allowed cursor-pointer"
-                    onclick={() => openDeleteDialog(user)}
-                    disabled={user.id === $auth.user?.id}><UserX /></Button
-                  >
+                      title={user.id === $auth.user?.id
+                        ? "You cannot delete your own account."
+                        : `Delete user ${user.username}`}
+                      aria-label={`Delete user ${user.username}`}
+                      aria-describedby={user.id === $auth.user?.id
+                        ? `self-delete-help-${user.id}`
+                        : undefined}
+                      onclick={() => openDeleteDialog(user)}
+                      disabled={user.id === $auth.user?.id}><UserX /></Button
+                    >
+                  </span>
+                  {#if user.id === $auth.user?.id}
+                    <span id={`self-delete-help-${user.id}`} class="sr-only"
+                      >You cannot delete your own account.</span
+                    >
+                  {/if}
                 {/if}
               </div>
             </td>
