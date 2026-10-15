@@ -11,6 +11,10 @@
   import Spinner from "$lib/components/ui/spinner/spinner.svelte";
   import Download from "@lucide/svelte/icons/download";
   import RotateCw from "@lucide/svelte/icons/rotate-cw";
+  import Copy from "@lucide/svelte/icons/copy";
+  import { toast } from "svelte-sonner";
+  import * as Dialog from "$lib/components/ui/dialog/index.js";
+  import { Textarea } from "$lib/components/ui/textarea/index.js";
   import { formatFileSize } from "$lib/utils/formatters";
   import type { LogFileInfo, LogTailResponse } from "$lib/types/shared";
 
@@ -35,6 +39,24 @@
   let search = $state("");
   let lines = $state("500");
   let autoRefresh = $state(false);
+  let copying = $state(false);
+  let copyDialogOpen = $state(false);
+  let copyText = $state("");
+
+  async function copyVisibleLogs() {
+    if (!tail?.entries.length || copying) return;
+    const text = tail.entries.map((entry) => entry.raw).join("\n");
+    copying = true;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Visible logs copied");
+    } catch {
+      copyText = text;
+      copyDialogOpen = true;
+    } finally {
+      copying = false;
+    }
+  }
 
   let timer: ReturnType<typeof setInterval> | null = null;
   let searchDebounce: ReturnType<typeof setTimeout> | null = null;
@@ -244,7 +266,16 @@
           </span>
         {/if}
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onclick={copyVisibleLogs}
+          disabled={copying || !tail?.entries.length}
+        >
+          <Copy class="h-4 w-4" />
+          Copy visible logs
+        </Button>
         <Button
           variant="outline"
           size="sm"
@@ -301,3 +332,29 @@
     </div>
   {/if}
 </div>
+
+<Dialog.Root bind:open={copyDialogOpen}>
+  <Dialog.Content class="bg-card text-foreground sm:max-w-2xl">
+    <Dialog.Header>
+      <Dialog.Title>Copy visible logs</Dialog.Title>
+      <Dialog.Description
+        >Automatic copying is unavailable in this browser. Select the text below
+        and use your device's Copy command.</Dialog.Description
+      >
+    </Dialog.Header>
+    <Textarea
+      readonly
+      value={copyText}
+      aria-label="Visible log entries to copy"
+      class="h-72 font-mono text-xs"
+      onfocus={(event) => event.currentTarget.select()}
+    />
+    <Dialog.Footer>
+      <Button
+        type="button"
+        variant="secondary"
+        onclick={() => (copyDialogOpen = false)}>Close</Button
+      >
+    </Dialog.Footer>
+  </Dialog.Content>
+</Dialog.Root>
