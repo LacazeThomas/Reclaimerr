@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Selected-provider playback history rules.** New **Playback history — selected provider** group adds 11 rule conditions for recorded activity, play counts, durations, viewers, and completed-watch dates. Choose a history provider per server under **Settings → Media Servers**: Automatic prefers a bound Tracearr source, otherwise Tautulli for Plex or Playback Reporting for Jellyfin/Emby. Tautulli settings now include an explicit Plex-server binding. These conditions use all retained provider history, including watches before a file was replaced, without merging native watch state. Unavailable history remains unknown and never silently switches providers; completion conditions require provider completion data.
 - **Unsaved rule edit warnings.** Leaving an edited rule through the editor Back button or app navigation asks before discarding changes. Refreshing or closing the tab uses the browser warning. Canceling navigation preserves the draft; unchanged editors and preview-only actions do not prompt.
 - **Smoother Storage refresh.** Existing metrics stay visible during refresh, with a full Last updated timestamp. A failed refresh retains the previous values and marks them as previous metrics alongside the error.
 - **Show/hide entered API keys.** Service configuration forms have a visibility toggle for newly entered keys or tokens. Saved secrets are never fetched or revealed, and clearing the field restores masking.
@@ -87,7 +88,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - Updated apprise and platformdirs.
-- The movie protection dialog now defaults to **Entire title — all libraries and versions**, including movies with only one file. Individual versions can still be selected.
+- The movie protection dialog now defaults to **Entire title - all libraries and versions**, including movies with only one file. Individual versions can still be selected.
 - Fully protected duplicate groups and associated upgrade leftovers are hidden by default. Enable **Show ignored and protected** to view them and manage their protection from the Protected page.
 
 ## [0.5.4] - 2026-10-01

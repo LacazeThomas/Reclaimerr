@@ -161,6 +161,20 @@ def normalize_reason_parts(
                 actual=actual,
                 details=details,
             )
+            raw_sources = condition.get("history_sources", [])
+            history_sources = [
+                {"server": str(source["server"]), "provider": str(source["provider"])}
+                for source in (raw_sources if isinstance(raw_sources, list) else [])
+                if isinstance(source, dict)
+                and "server" in source
+                and "provider" in source
+            ]
+            if history_sources:
+                summary = ", ".join(
+                    f"{source['server']} ({source['provider'].replace('_', ' ').title()})"
+                    for source in history_sources
+                )
+                display += f" [History: {summary}]"
             conditions_out.append(
                 CandidateReasonCondition(
                     field=field_name,
@@ -170,6 +184,7 @@ def normalize_reason_parts(
                     expected=expected,
                     actual=actual,
                     details=details,
+                    history_sources=history_sources,
                     display=display,
                 )
             )

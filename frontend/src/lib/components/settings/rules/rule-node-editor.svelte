@@ -406,6 +406,83 @@
       defaultOperator: "exists",
     },
     {
+      value: "playback_history.has_activity",
+      label: "Recorded history activity",
+      kind: "boolean",
+      operators: booleanOperators,
+      defaultOperator: "is_true",
+    },
+    {
+      value: "playback_history.play_count",
+      label: "Recorded history plays",
+      kind: "number",
+      operators: numericOperators,
+      defaultOperator: "greater_than_or_equal",
+    },
+    {
+      value: "playback_history.last_activity_at",
+      label: "Last recorded history activity",
+      kind: "temporal",
+      operators: temporalOperators,
+      defaultOperator: "exists",
+    },
+    {
+      value: "playback_history.days_since_last_activity",
+      label: "Days since recorded history activity",
+      kind: "number",
+      operators: numericOperators,
+      defaultOperator: "greater_than_or_equal",
+    },
+    {
+      value: "playback_history.total_duration_minutes",
+      label: "Recorded history duration (minutes)",
+      kind: "number",
+      operators: numericOperators,
+      defaultOperator: "greater_than_or_equal",
+    },
+    {
+      value: "playback_history.longest_duration_minutes",
+      label: "Longest recorded history playback (minutes)",
+      kind: "number",
+      operators: numericOperators,
+      defaultOperator: "greater_than_or_equal",
+    },
+    {
+      value: "playback_history.unique_user_count",
+      label: "Recorded history user count",
+      kind: "number",
+      operators: numericOperators,
+      defaultOperator: "greater_than_or_equal",
+    },
+    {
+      value: "playback_history.usernames",
+      label: "Recorded history users",
+      kind: "text",
+      operators: multiValueTextOperators,
+      defaultOperator: "contains_any",
+    },
+    {
+      value: "playback_history.has_completed_watch",
+      label: "Recorded completed watch",
+      kind: "boolean",
+      operators: booleanOperators,
+      defaultOperator: "is_true",
+    },
+    {
+      value: "playback_history.last_completed_at",
+      label: "Last recorded completed watch",
+      kind: "temporal",
+      operators: temporalOperators,
+      defaultOperator: "exists",
+    },
+    {
+      value: "playback_history.days_since_last_completed",
+      label: "Days since recorded completed watch",
+      kind: "number",
+      operators: numericOperators,
+      defaultOperator: "greater_than_or_equal",
+    },
+    {
       value: "playback.has_activity",
       label: "Playback activity",
       kind: "boolean",
@@ -1192,6 +1269,17 @@
   ];
 
   const PLAYBACK_FIELD_VALUES = [
+    "playback_history.has_activity",
+    "playback_history.play_count",
+    "playback_history.last_activity_at",
+    "playback_history.days_since_last_activity",
+    "playback_history.total_duration_minutes",
+    "playback_history.longest_duration_minutes",
+    "playback_history.unique_user_count",
+    "playback_history.usernames",
+    "playback_history.has_completed_watch",
+    "playback_history.last_completed_at",
+    "playback_history.days_since_last_completed",
     "playback.has_activity",
     "playback.play_count",
     "playback.total_duration_minutes",
@@ -1595,6 +1683,8 @@
         return "Favorites";
       case "watch":
         return "Watch";
+      case "playback_history":
+        return "Playback history - selected provider";
       case "playback":
         return "Playback History";
       case "tmdb":
@@ -1770,6 +1860,7 @@
   // Both playback username lists are filled from the same picker, so the button
   // and its dialog have to agree on which fields offer it.
   const PLAYBACK_USER_LIST_FIELDS = new Set([
+    "playback_history.usernames",
     "playback.usernames",
     "playback.fully_watched_usernames",
   ]);
@@ -2632,6 +2723,17 @@
       {:else}
         <!-- spacer so the remove button stays right aligned on desktop -->
         <div class="hidden md:flex md:flex-1"></div>
+      {/if}
+
+      {#if node.field.startsWith("playback_history.")}
+        <p class="col-span-full text-xs text-muted-foreground">
+          Uses only the history provider selected in each media server’s
+          settings, including retained watches before a file was replaced. No
+          recorded activity does not mean the item was never watched. Completed
+          watches on a series or season refer to completed episodes, not the
+          entire show. Completion fields are unavailable when the provider does
+          not report completion.
+        </p>
       {/if}
 
       <!-- node actions -->

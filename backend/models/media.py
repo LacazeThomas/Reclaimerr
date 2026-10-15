@@ -645,6 +645,7 @@ class CandidateReasonCondition(BaseModel):
     # percent behind `Season fully watched is true`.
     details: list[str] = Field(default_factory=list)
     display: str
+    history_sources: list[dict[str, str]] = Field(default_factory=list)
 
 
 class CandidateReasonPart(BaseModel):

@@ -21,6 +21,7 @@ from sqlalchemy.orm import selectinload
 
 from backend.core.auto_delete import resolve_auto_delete_policy
 from backend.core.logger import LOG
+from backend.core.playback_history_fields import HISTORY_RULE_FIELDS
 from backend.core.protection_scope import detach_movie_version_references
 from backend.core.rule_actions import (
     ARR_ACTION_LIST_EXCLUSION,
@@ -30,11 +31,11 @@ from backend.core.rule_actions import (
     get_arr_service_config_ids,
 )
 from backend.core.rule_engine import (
+    ALL_PLAYBACK_RULE_FIELDS,
     ARR_ID_RULE_FIELDS,
     COLLECTION_RULE_FIELDS,
     EPISODE_WATCH_PROGRESS_FIELDS,
     FAVORITES_RULE_FIELDS,
-    PLAYBACK_RULE_FIELDS,
     PLAYBACK_USERNAME_FIELDS,
     RANK_RULE_FIELDS,
     REGEX_OPERATORS,
@@ -175,6 +176,7 @@ from backend.services.playback_history import (
 from backend.services.radarr import RadarrClient
 from backend.services.requester_warnings import warn_requesters_before_deletion
 from backend.services.seerr_cache import SeerrRequestSnapshot, seerr_snapshot_cache
+from backend.services.selected_playback_history import load_selected_history_snapshot
 from backend.services.sonarr import SonarrClient
 from backend.services.watch_identity import (
     AliasIndex,
@@ -1878,7 +1880,7 @@ async def _season_watch_inventory_rule_data(
 def _rule_uses_playback_fields(rule: ReclaimRule) -> bool:
     return any(
         collect_rule_conditions(rule.definition, field=field)
-        for field in PLAYBACK_RULE_FIELDS | USER_SCOPED_PLAYBACK_FIELDS
+        for field in ALL_PLAYBACK_RULE_FIELDS | USER_SCOPED_PLAYBACK_FIELDS
     )
 
 
@@ -1959,7 +1961,7 @@ def _playback_unavailable_target_count(
     user_scoped_scopes: set[str] = set()
     for rule in rules:
         scope = normalize_rule_target(rule)
-        for field in PLAYBACK_RULE_FIELDS:
+        for field in ALL_PLAYBACK_RULE_FIELDS:
             if collect_rule_conditions(rule.definition, field=field):
                 requested_fields_by_scope[scope].add(field)
         if any(
@@ -2011,7 +2013,7 @@ async def _activate_playback_history_for_rules(
     fields = {
         field
         for rule in playback_rules
-        for field in PLAYBACK_RULE_FIELDS
+        for field in ALL_PLAYBACK_RULE_FIELDS
         if collect_rule_conditions(rule.definition, field=field)
     }
     user_scoped_fields = {
@@ -2045,7 +2047,25 @@ async def _activate_playback_history_for_rules(
             )
 
     refresh_result = await refresh_playback_history(force=require_fresh)
-    snapshot = await load_playback_rule_snapshot(db, refresh_result)
+    if fields and fields.issubset(HISTORY_RULE_FIELDS) and not user_scoped_fields:
+        snapshot = await load_selected_history_snapshot(db, refresh_result, fields)
+    else:
+        snapshot = await load_playback_rule_snapshot(db, refresh_result)
+        if fields & HISTORY_RULE_FIELDS:
+            history_snapshot = await load_selected_history_snapshot(
+                db, refresh_result, fields & HISTORY_RULE_FIELDS
+            )
+            snapshot.errors = list(
+                dict.fromkeys([*snapshot.errors, *history_snapshot.errors])
+            )
+            snapshot.available_targets.update(history_snapshot.available_targets)
+            for key, values in history_snapshot.values_by_target.items():
+                snapshot.values_by_target.setdefault(key, {}).update(values)
+                snapshot.available_fields_by_target.setdefault(key, set()).update(
+                    history_snapshot.available_fields_by_target[key]
+                )
+            for scope, reasons in history_snapshot.unavailable_reasons.items():
+                snapshot.unavailable_reasons.setdefault(scope, {}).update(reasons)
     PlaybackHistoryResolver(snapshot.values_by_target).activate()
     if user_scoped_fields:
         PlaybackUserHistoryResolver(
@@ -2072,6 +2092,18 @@ async def _activate_playback_history_for_rules(
         error = "; ".join(errors)
     elif not snapshot.has_configured_provider:
         error = "No playback source is configured"
+    elif fields & HISTORY_RULE_FIELDS:
+        reasons = sorted(
+            {
+                reason
+                for scope_reasons in snapshot.unavailable_reasons.values()
+                for reason in scope_reasons
+            }
+        )
+        error = (
+            "; ".join(reasons)
+            or "Some selected-provider history fields are unavailable"
+        )
     elif fields & IMPORTED_PLAYBACK_DURATION_FIELDS:
         error = (
             "Playback duration fields require imported Playback Reporting or "

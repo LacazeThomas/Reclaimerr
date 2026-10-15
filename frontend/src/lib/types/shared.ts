@@ -1393,6 +1393,7 @@ export interface ReclaimCandidateEntry {
       actual: string | number | boolean | (string | number | boolean)[] | null;
       details: string[];
       display: string;
+      history_sources?: { server: string; provider: string }[];
     }[];
     text: string;
   }[];

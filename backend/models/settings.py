@@ -111,6 +111,32 @@ class ServiceConfigUpdate(BaseModel):
                     "External URL must include a scheme (e.g. http://192.168.1.2:8989)",
                 )
             self.extra_settings["external_url"] = external_url.rstrip("/")
+        settings = self.extra_settings or {}
+        if "playback_history_provider" in settings:
+            allowed = {"automatic", "tracearr"}
+            if self.service_type == Service.PLEX:
+                allowed.add("tautulli")
+            elif self.service_type in {Service.JELLYFIN, Service.EMBY}:
+                allowed.add("playback_reporting")
+            if (
+                self.service_type not in MEDIA_SERVERS
+                or not isinstance(settings["playback_history_provider"], str)
+                or settings["playback_history_provider"] not in allowed
+            ):
+                raise ValueError(
+                    "Invalid playback history provider for this media server"
+                )
+        if "plex_service_config_id" in settings:
+            binding = settings["plex_service_config_id"]
+            if self.service_type != Service.TAUTULLI or (
+                binding is not None
+                and (
+                    not isinstance(binding, int)
+                    or isinstance(binding, bool)
+                    or binding <= 0
+                )
+            ):
+                raise ValueError("Tautulli binding must be a Plex server config ID")
         if self.is_main and self.service_type not in MEDIA_SERVERS:
             raise PydanticCustomError(
                 "is_main_invalid",

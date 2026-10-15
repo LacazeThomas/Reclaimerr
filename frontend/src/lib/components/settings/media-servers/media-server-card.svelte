@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { HISTORY_PROVIDER_LABELS } from "./types";
   import type { Component } from "svelte";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
@@ -73,6 +74,13 @@
         </div>
         <p class="text-xs text-muted-foreground break-all">
           {label} &middot; {server.config.baseUrl}
+        </p>
+        <p class="text-xs text-muted-foreground">
+          History: {server.config.historySource?.error ??
+            HISTORY_PROVIDER_LABELS[
+              server.config.historySource?.provider ?? ""
+            ] ??
+            "not configured"}
         </p>
         <p class="text-xs text-muted-foreground">
           Last sync: {server.lastSyncedAt

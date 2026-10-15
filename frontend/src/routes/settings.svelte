@@ -405,6 +405,7 @@
     media_servers: TracearrMediaServer[];
   } | null>(null);
   let discoveringTracearr = $state(false);
+  let tautulliPlexServers = $state<Array<{ id: number; name: string }>>([]);
 
   // helper to get instance name for select trigger
   const getArrInstanceName = (serviceId: string, id: number | null) => {
@@ -875,6 +876,9 @@
         >
       >("/api/settings/services");
 
+      tautulliPlexServers = (
+        rawServices[SettingsTab.Plex]?.instances ?? []
+      ).map((server) => ({ id: server.id, name: server.name }));
       for (const [serviceId, config] of Object.entries(rawServices)) {
         if ((MEDIA_SERVERS as readonly string[]).includes(serviceId)) continue;
         const instance =
@@ -914,6 +918,22 @@
       loading = false;
     }
   };
+
+  $effect(() => {
+    if (activeTab === SettingsTab.Tautulli) {
+      void get_api<
+        Record<string, { instances?: Array<{ id: number; name: string }> }>
+      >("/api/settings/services")
+        .then((services) => {
+          tautulliPlexServers = (
+            services[SettingsTab.Plex]?.instances ?? []
+          ).map((server) => ({ id: server.id, name: server.name }));
+        })
+        .catch((error: Error) =>
+          toast.error("Could not load Plex servers: " + error.message),
+        );
+    }
+  });
 
   // helper to load icon from tabs
   const getTabIcon = (tabId: SettingsTab) => {
@@ -1117,6 +1137,37 @@
               extraSettings={serviceState[activeTab].config.extraSettings ?? {}}
               onchange={handleServiceChange}
             />
+            {#if activeTab === SettingsTab.Tautulli}
+              <div class="mt-5 space-y-2">
+                <label for="tautulli-plex-server" class="text-sm font-medium"
+                  >Plex server</label
+                >
+                <select
+                  id="tautulli-plex-server"
+                  class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={serviceState[SettingsTab.Tautulli].config.extraSettings
+                    ?.plex_service_config_id ?? ""}
+                  onchange={(event) => {
+                    serviceState[SettingsTab.Tautulli].config.extraSettings = {
+                      ...serviceState[SettingsTab.Tautulli].config
+                        .extraSettings,
+                      plex_service_config_id: event.currentTarget.value
+                        ? Number(event.currentTarget.value)
+                        : null,
+                    };
+                  }}
+                >
+                  <option value="">Choose a Plex server</option>
+                  {#each tautulliPlexServers as server}
+                    <option value={server.id}>{server.name}</option>
+                  {/each}
+                </select>
+                <p class="text-xs text-muted-foreground">
+                  The Plex server this Tautulli instance tracks. Changing it
+                  remaps retained Tautulli history to that server.
+                </p>
+              </div>
+            {/if}
             {#if activeTab === SettingsTab.Tracearr}
               <div class="mt-5 rounded-lg border border-border p-4 space-y-4">
                 <div class="flex flex-wrap items-start justify-between gap-3">
@@ -1125,10 +1176,9 @@
                       Playback history bindings
                     </h3>
                     <p class="mt-1 text-xs text-muted-foreground">
-                      A bound server uses Tracearr only for durable history.
-                      Unbound Jellyfin, Emby, and Plex servers keep using
-                      Playback Reporting or Tautulli. Native watch snapshots
-                      remain available.
+                      Automatic uses Tracearr for bound servers. Choose a
+                      different provider in Media Servers to override it. Native
+                      watch snapshots remain available.
                     </p>
                   </div>
                   <Button

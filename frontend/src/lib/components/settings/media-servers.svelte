@@ -162,6 +162,8 @@
               base_url: string;
               api_key: string;
               last_synced_at?: string | null;
+              extra_settings?: Record<string, any>;
+              history_source?: MediaServerConfig["historySource"];
             }>;
           }
         >
@@ -177,6 +179,8 @@
             enabled: raw.enabled,
             baseUrl: raw.base_url,
             isMain: raw.is_main ?? false,
+            extraSettings: raw.extra_settings ?? {},
+            historySource: raw.history_source,
           };
           next.push({
             serverKey,

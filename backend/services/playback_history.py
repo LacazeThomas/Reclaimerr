@@ -40,6 +40,12 @@ from backend.services.media_identity import (
     MediaIdentityOwnership,
     load_media_identity_ownership,
 )
+from backend.services.playback_selection import (
+    ActivePlaybackSources,
+    load_history_sources,
+    resolve_history_sources,
+    tautulli_server_id,
+)
 from backend.services.tautulli import TautulliClient
 from backend.services.tracearr import TracearrClient
 
@@ -407,7 +413,9 @@ async def load_active_tracearr_sources(
                         binding.tracearr_server_id,
                     )
                 )
-    return active
+    if not media_configs:
+        return active
+    return ActivePlaybackSources(active, await load_history_sources(db))
 
 
 def active_playback_event_clause(
@@ -415,6 +423,33 @@ def active_playback_event_clause(
 ):
     """Build the SQL predicate for the single authoritative durable provider."""
 
+    if isinstance(active_tracearr_sources, ActivePlaybackSources):
+        clauses = []
+        for source in active_tracearr_sources.selections.values():
+            if source.error is not None:
+                continue
+            clause = and_(
+                PlaybackHistoryEvent.source_service == source.provider,
+                PlaybackHistoryEvent.source_service_config_id
+                == source.provider_config_id,
+                or_(
+                    PlaybackHistoryEvent.observed_service == source.server_service,
+                    PlaybackHistoryEvent.observed_service.is_(None),
+                ),
+                or_(
+                    PlaybackHistoryEvent.observed_service_config_id == source.server_id,
+                    PlaybackHistoryEvent.observed_service_config_id.is_(None),
+                ),
+            )
+            if source.remote_server_id is not None:
+                clause = and_(
+                    clause,
+                    PlaybackHistoryEvent.source_event_key.startswith(
+                        f"{source.remote_server_id}:"
+                    ),
+                )
+            clauses.append(clause)
+        return or_(*clauses) if clauses else false()
     selected_services = {
         service for _config_id, service, _server_id in active_tracearr_sources
     }
@@ -469,6 +504,11 @@ def _playback_event_is_active(
     event: PlaybackHistoryEvent,
     active_tracearr_sources: set[tuple[int, Service, str]],
 ) -> bool:
+    if isinstance(active_tracearr_sources, ActivePlaybackSources):
+        return any(
+            source.event_matches(event)
+            for source in active_tracearr_sources.selections.values()
+        )
     observed_service = _observed_service_for_event(event)
     selected_services = {
         service for _config_id, service, _server_id in active_tracearr_sources
@@ -703,6 +743,12 @@ def _recent_status_from(config: ServiceConfig) -> PlaybackProviderStatus | None:
         config_id=config.id,
         provider=config.service_type,
         observed_service=observed_service,
+        observed_config_id=_parse_int(state.get("observed_config_id"))
+        or (
+            _parse_int((config.extra_settings or {}).get("plex_service_config_id"))
+            if config.service_type == Service.TAUTULLI
+            else config.id
+        ),
         available=bool(state.get("available")),
         error=summarize_error_message(str(state.get("last_error") or "").strip())
         or None,
@@ -718,6 +764,7 @@ def _set_state(
     error: str | None,
     imported_events: int,
     last_event_at: datetime | None = None,
+    observed_config_id: int | None = None,
 ) -> None:
     """Persist the latest playback sync state on a service config."""
 
@@ -729,6 +776,7 @@ def _set_state(
     state: dict[str, object] = {
         "provider": provider.value,
         "observed_service": observed_service.value,
+        "observed_config_id": observed_config_id,
         "available": available,
         "last_attempt_at": now.isoformat(),
         "last_success_at": (
@@ -1516,12 +1564,9 @@ async def _refresh_tautulli_config(
             db_config = await session.get(ServiceConfig, config.id)
             if db_config is None:
                 raise ValueError(f"Service config {config.id} no longer exists")
-            # Tautulli's API cannot name which Plex it fronts, so attribute it
-            # to the main server. Null when main is not Plex, which leaves its
-            # events resolving service-wide the way they always have.
-            observed_config_id = (
-                await load_media_identity_ownership(session)
-            ).main_config_id_for(Service.PLEX)
+            observed_config_id = tautulli_server_id(
+                db_config, list((await session.scalars(select(ServiceConfig))).all())
+            )
             await _backfill_event_usernames(
                 session,
                 config_id=db_config.id,
@@ -1543,6 +1588,7 @@ async def _refresh_tautulli_config(
                 error=None,
                 imported_events=imported,
                 last_event_at=max((event.played_at for event in events), default=None),
+                observed_config_id=observed_config_id,
             )
             await session.commit()
         return PlaybackProviderStatus(
@@ -1965,42 +2011,28 @@ async def _refresh_playback_history_once(
             else PLAYBACK_EPISODE_MIN_SECONDS
         )
 
-    media_configs_by_id = {config.id: config for config in media_configs}
-    tracearr_bindings_by_config: dict[int, list[_TracearrBinding]] = {}
-    selected_tracearr_media_config_ids: set[int] = set()
-    for config in configs:
-        if config.service_type is not Service.TRACEARR:
-            continue
-        valid_bindings = [
+    selections = resolve_history_sources([*media_configs, *configs])
+    tracearr_bindings_by_config = {
+        config.id: [
             binding
             for binding in _tracearr_bindings(config)
-            if (
-                (media_config := media_configs_by_id.get(binding.service_config_id))
-                is not None
-                and media_config.service_type is binding.observed_service
-            )
+            if (source := selections.get(binding.service_config_id)) is not None
+            and source.provider == Service.TRACEARR
+            and source.provider_config_id == config.id
         ]
-        tracearr_bindings_by_config[config.id] = valid_bindings
-        selected_tracearr_media_config_ids.update(
-            binding.service_config_id for binding in valid_bindings
-        )
-
-    selected_tracearr_services = {
-        media_configs_by_id[config_id].service_type
-        for config_id in selected_tracearr_media_config_ids
+        for config in configs
+        if config.service_type == Service.TRACEARR
     }
-    has_plex = any(config.service_type is Service.PLEX for config in media_configs)
+    selected_config_ids = {
+        source.provider_config_id
+        for source in selections.values()
+        if source.error is None
+    }
 
     statuses: list[PlaybackProviderStatus] = []
     refreshed = False
     for config in configs:
-        if (
-            config.service_type in {Service.JELLYFIN, Service.EMBY}
-            and config.id in selected_tracearr_media_config_ids
-        ) or (
-            config.service_type is Service.TAUTULLI
-            and Service.PLEX in selected_tracearr_services
-        ):
+        if config.id not in selected_config_ids:
             continue
         if config.service_type is not Service.TRACEARR and not force:
             recent_status = _recent_status_from(config)
@@ -2008,8 +2040,6 @@ async def _refresh_playback_history_once(
                 statuses.append(recent_status)
                 continue
         if config.service_type in {Service.JELLYFIN, Service.EMBY}:
-            if config.id in selected_tracearr_media_config_ids:
-                continue
             statuses.append(
                 await _refresh_reporting_config(
                     config,
@@ -2018,9 +2048,7 @@ async def _refresh_playback_history_once(
                 )
             )
             refreshed = True
-        elif config.service_type == Service.TAUTULLI and has_plex:
-            if Service.PLEX in selected_tracearr_services:
-                continue
+        elif config.service_type == Service.TAUTULLI:
             statuses.append(
                 await _refresh_tautulli_config(
                     config,

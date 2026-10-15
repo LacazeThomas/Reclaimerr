@@ -589,3 +589,15 @@ Rules other users have shared are on [Community Rules](../community-rules/index.
 - [Rule Format](../reference/rule-format.md)
 - [Rule Fields](../reference/rule-fields.md)
 - [Community Rules](../community-rules/index.md)
+
+## Selected-provider playback history
+
+Choose **Playback history - selected provider** in the rule node editor to use only recorded history from the provider selected for each media server. In **Settings → Media Servers**, edit a server and choose Automatic, Tracearr, or Tautulli (Plex), or Playback Reporting (Jellyfin/Emby). Bind Tautulli to its Plex server in Tautulli settings.
+
+Automatic prefers an enabled Tracearr binding, otherwise the server's Tautulli or Playback Reporting integration. A failed provider or an empty history never causes a switch to another source. Different servers may use different providers.
+
+The new playback_history fields include all retained imported history, even watches before a file was replaced. They do not merge native server watch state or history from superseded providers. Existing Watch and Playback History conditions retain their calculated and merged behavior.
+
+Use **Days since recorded completed watch > 180** for an old completed watch. Use **Recorded completed watch is false** separately to match no recorded completed watches; a missing completion date does not match a numeric age. For TV series and seasons, completion dates refer to completed episode plays, not completion of the entire show.
+
+Unavailable, unsynced, or unmapped sources are unknown, rather than zero plays or proof that an item was never watched. Playback Reporting does not provide completion flags, so its completion conditions remain unavailable. Unknown completion flags also prevent proving that no completed watch exists or that a recorded completion is the latest one.
