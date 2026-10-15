@@ -13,6 +13,8 @@ Use rule preview before saving or running a cleanup scan. Preview shows the item
 
 Use the search box on **Rules** to find names or descriptions, ignoring case. Combine it with status, scope, and outcome filters to narrow the list. The count shows how many rules match; **Clear filters** resets the search and all filters. These controls only change the displayed list; **Export All** still exports every rule.
 
+The rule editor warns before you discard unsaved changes through its Back button or navigation to another app page. Refreshing or closing the tab uses the browser’s own warning. Cancel the warning to keep editing. Opening a preview does not mark a rule as changed.
+
 ## Start from a preset
 
 1. Open **Rules → Add from preset** and choose a starter.

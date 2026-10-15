@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- **Unsaved rule edit warnings.** Leaving an edited rule through the editor Back button or app navigation asks before discarding changes. Refreshing or closing the tab uses the browser warning. Canceling navigation preserves the draft; unchanged editors and preview-only actions do not prompt.
 - **Smoother Storage refresh.** Existing metrics stay visible during refresh, with a full Last updated timestamp. A failed refresh retains the previous values and marks them as previous metrics alongside the error.
 - **Show/hide entered API keys.** Service configuration forms have a visibility toggle for newly entered keys or tokens. Saved secrets are never fetched or revealed, and clearing the field restores masking.
 - **Copy visible logs.** Settings → Logs can copy the currently displayed filtered entries, with a manual-copy dialog when browser clipboard access is unavailable. Download still saves the full selected log file.

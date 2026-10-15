@@ -41,6 +41,7 @@
     type RulePreviewEntry,
   } from "$lib/types/shared";
   import { formatFileSize } from "$lib/utils/formatters";
+  import { guardUnsavedChanges } from "$lib/utils/unsaved-changes";
 
   interface Props {
     rule: RuleDraft | null;
@@ -175,6 +176,36 @@
   let radarrInstances = $state<ArrInstance[]>([]);
   let sonarrInstances = $state<ArrInstance[]>([]);
   let saving = $state(false);
+
+  const editorSnapshot = () =>
+    JSON.stringify({
+      name,
+      description,
+      enabled,
+      targetScope,
+      definition,
+      outcome,
+      tagEnabled,
+      autoDeleteEnabled,
+      moveInsteadOfDelete,
+      arrTag,
+      autoDeleteDelayDays,
+      radarrArrAction,
+      sonarrArrAction,
+      qualityProfileId,
+      triggerSearch,
+      radarrServiceConfigIds,
+      sonarrServiceConfigIds,
+    });
+  const initialEditorSnapshot = editorSnapshot();
+  const hasUnsavedChanges = $derived(
+    editorSnapshot() !== initialEditorSnapshot,
+  );
+  const confirmDiscard = () =>
+    !hasUnsavedChanges || window.confirm("Discard unsaved rule changes?");
+  const cancel = () => {
+    if (confirmDiscard()) onCancel();
+  };
 
   // preview states
   let previewDialogOpen = $state(false);
@@ -684,6 +715,7 @@
 
   onMount(() => {
     loadArrInstances();
+    return guardUnsavedChanges(() => hasUnsavedChanges, confirmDiscard);
   });
 </script>
 
@@ -694,7 +726,9 @@
         class="cursor-pointer"
         variant="ghost"
         size="icon"
-        onclick={onCancel}
+        onclick={cancel}
+        aria-label="Back to rules"
+        title="Back to rules"
       >
         <ArrowLeft class="size-5 text-primary" />
       </Button>
