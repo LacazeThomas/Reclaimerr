@@ -12,7 +12,10 @@
   import Hourglass from "@lucide/svelte/icons/hourglass";
   import OctagonX from "@lucide/svelte/icons/octagon-x";
   import { toast } from "svelte-sonner";
-  import { formatDistanceToNow } from "$lib/utils/date";
+  import {
+    formatDateTimeToLocaleString,
+    formatDistanceToNow,
+  } from "$lib/utils/date";
   import EditTaskScheduleDialog from "./edit-task-schedule-dialog.svelte";
   import { ScheduleType, TaskStatus } from "$lib/types/shared";
   import { getStatusColor, getTaskStatusText } from "$lib/utils/tasks";
@@ -91,11 +94,24 @@
     }
   };
 
-  const runTaskNow = async (taskId: string, taskName: string) => {
+  const isTaskActive = (task: TaskDetails) =>
+    task.status === TaskStatus.Queued || task.status === TaskStatus.Running;
+
+  const runTaskNow = async (task: TaskDetails) => {
+    const taskId = task.id;
+    const taskName = task.name;
+    if (actionInProgress[taskId] || isTaskActive(task)) return;
     actionInProgress[taskId] = true;
     try {
-      await post_api(`/api/tasks/tasks/${taskId}/run`);
-      toast.success(`${taskName} will run shortly`);
+      const response = await post_api<{ already_active: boolean }>(
+        `/api/tasks/tasks/${taskId}/run`,
+      );
+      if (response.already_active) {
+        toast.message(`${taskName} is already queued or running`);
+      } else {
+        toast.success(`${taskName} queued`);
+      }
+      if (task.status !== TaskStatus.Running) task.status = TaskStatus.Queued;
       // refresh to show updated status
       await fetchTasks();
     } catch (error) {
@@ -300,14 +316,24 @@
 
                 <!-- next run -->
                 {#if task.status !== TaskStatus.Disabled && task.next_run}
-                  <span class="flex items-center"
+                  <span
+                    class="flex items-center"
+                    title={formatDateTimeToLocaleString(task.next_run, {
+                      includeTimezone: true,
+                    })}
                     ><ClipboardClock class="size-4 text-foreground mr-2" /> Next run:
                     {formatDistanceToNow(task.next_run)}</span
                   >
                 {/if}
 
                 <!-- last run info -->
-                <span class="flex items-center"
+                <span
+                  class="flex items-center"
+                  title={task.last_run
+                    ? formatDateTimeToLocaleString(task.last_run, {
+                        includeTimezone: true,
+                      })
+                    : undefined}
                   ><Hourglass class="size-4 text-foreground mr-2" />Last run:
                   {task.last_run
                     ? ` ${formatDistanceToNow(task.last_run)}`
@@ -329,7 +355,6 @@
               {#if task.editable}
                 <Button
                   size="sm"
-                  class="cursor-pointer"
                   onclick={() => openEditDialog(task)}
                   disabled={actionInProgress[task.id]}
                   title="Edit schedule"
@@ -341,10 +366,12 @@
               {#if task.enabled}
                 <Button
                   size="sm"
-                  class="cursor-pointer"
-                  onclick={() => runTaskNow(task.id, task.name)}
-                  disabled={actionInProgress[task.id]}
-                  title="Run now"
+                  onclick={() => runTaskNow(task)}
+                  disabled={actionInProgress[task.id] || isTaskActive(task)}
+                  title={isTaskActive(task)
+                    ? "Already queued or running"
+                    : "Run now"}
+                  aria-label={`Run ${task.name} now`}
                 >
                   {#if actionInProgress[task.id]}
                     <Spinner class="h-4 w-4" />

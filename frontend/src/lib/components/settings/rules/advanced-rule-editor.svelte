@@ -41,6 +41,7 @@
     type RulePreviewEntry,
   } from "$lib/types/shared";
   import { formatFileSize } from "$lib/utils/formatters";
+  import { guardUnsavedChanges } from "$lib/utils/unsaved-changes";
 
   interface Props {
     rule: RuleDraft | null;
@@ -126,12 +127,16 @@
     | "delete"
     | "unmonitor"
     | "unmonitor_delete_monitor_new_seasons"
+    | "unmonitor_delete_list_exclusion"
+    | "unmonitor_delete_monitor_or_exclude"
     | "unmonitor_only"
     | "change_quality_profile";
   const ARR_ACTIONS: ArrAction[] = [
     "delete",
     "unmonitor",
     "unmonitor_delete_monitor_new_seasons",
+    "unmonitor_delete_list_exclusion",
+    "unmonitor_delete_monitor_or_exclude",
     "unmonitor_only",
     "change_quality_profile",
   ];
@@ -171,6 +176,36 @@
   let radarrInstances = $state<ArrInstance[]>([]);
   let sonarrInstances = $state<ArrInstance[]>([]);
   let saving = $state(false);
+
+  const editorSnapshot = () =>
+    JSON.stringify({
+      name,
+      description,
+      enabled,
+      targetScope,
+      definition,
+      outcome,
+      tagEnabled,
+      autoDeleteEnabled,
+      moveInsteadOfDelete,
+      arrTag,
+      autoDeleteDelayDays,
+      radarrArrAction,
+      sonarrArrAction,
+      qualityProfileId,
+      triggerSearch,
+      radarrServiceConfigIds,
+      sonarrServiceConfigIds,
+    });
+  const initialEditorSnapshot = editorSnapshot();
+  const hasUnsavedChanges = $derived(
+    editorSnapshot() !== initialEditorSnapshot,
+  );
+  const confirmDiscard = () =>
+    !hasUnsavedChanges || window.confirm("Discard unsaved rule changes?");
+  const cancel = () => {
+    if (confirmDiscard()) onCancel();
+  };
 
   // preview states
   let previewDialogOpen = $state(false);
@@ -245,6 +280,12 @@
         return "Unmonitor + Delete File";
       case "unmonitor_delete_monitor_new_seasons":
         return "Unmonitor + Delete Files + Monitor New Seasons (only if latest season deleted)";
+      case "unmonitor_delete_list_exclusion":
+        return targetScope === "season"
+          ? "Unmonitor + Delete Files + Add List Exclusion (only if ended and latest season deleted)"
+          : "Unmonitor + Delete Files + Add List Exclusion";
+      case "unmonitor_delete_monitor_or_exclude":
+        return "Unmonitor + Delete Files + Monitor New Seasons OR Add List Exclusion";
       case "unmonitor_only":
         return "Unmonitor Only (Keep File)";
       case "change_quality_profile":
@@ -289,7 +330,11 @@
   $effect(() => {
     if (
       targetScope !== "season" &&
-      sonarrArrAction === "unmonitor_delete_monitor_new_seasons"
+      [
+        "unmonitor_delete_monitor_new_seasons",
+        "unmonitor_delete_list_exclusion",
+        "unmonitor_delete_monitor_or_exclude",
+      ].includes(sonarrArrAction)
     ) {
       sonarrArrAction = "unmonitor";
     }
@@ -670,6 +715,7 @@
 
   onMount(() => {
     loadArrInstances();
+    return guardUnsavedChanges(() => hasUnsavedChanges, confirmDiscard);
   });
 </script>
 
@@ -677,10 +723,11 @@
   <div class="flex flex-col md:flex-row items-center justify-between gap-3">
     <div class="flex items-center gap-3">
       <Button
-        class="cursor-pointer"
         variant="ghost"
         size="icon"
-        onclick={onCancel}
+        onclick={cancel}
+        aria-label="Back to rules"
+        title="Back to rules"
       >
         <ArrowLeft class="size-5 text-primary" />
       </Button>
@@ -702,7 +749,6 @@
         variant="secondary"
         onclick={() => void loadPreviewPage(1)}
         disabled={previewLoading || !canPreviewRule}
-        class="cursor-pointer"
       >
         {#if previewLoading}
           <Eye class="size-4 animate-spin" /> Previewing...
@@ -710,11 +756,7 @@
           <Eye class="size-4" /> Preview Matches
         {/if}
       </Button>
-      <Button
-        onclick={save}
-        disabled={saving || !canSaveRule}
-        class="gap-2 cursor-pointer"
-      >
+      <Button onclick={save} disabled={saving || !canSaveRule} class="gap-2 ">
         <Save class="size-4" />
         {saving ? "Saving..." : "Save Rule"}
       </Button>
@@ -776,9 +818,7 @@
             }
           }}
         >
-          <Select.Trigger
-            class="w-full flex-10 bg-card text-card-foreground cursor-pointer"
-          >
+          <Select.Trigger class="w-full flex-10 bg-card text-card-foreground ">
             {targetScope === "movie_version"
               ? "Movie version"
               : targetScope === "series"
@@ -824,9 +864,7 @@
           if (value === "candidate" || value === "protect") outcome = value;
         }}
       >
-        <Select.Trigger
-          class="w-full bg-card text-card-foreground cursor-pointer"
-        >
+        <Select.Trigger class="w-full bg-card text-card-foreground ">
           {outcome === "protect"
             ? "Create automated protection"
             : "Create cleanup candidate"}
@@ -978,9 +1016,7 @@
           {#each selectedArrInstances as instance}
             <Label
               class="flex items-center gap-2 rounded-md border border-border bg-background/40 p-3 text-sm
-                text-foreground cursor-pointer {instance.enabled
-                ? ''
-                : 'opacity-60'}"
+                text-foreground {instance.enabled ? '' : 'opacity-60'}"
             >
               <Checkbox
                 checked={selectedArrConfigIds.includes(instance.id)}
@@ -1025,7 +1061,7 @@
               }}
             >
               <Select.Trigger
-                class="w-full min-h-9 data-[size=default]:h-auto whitespace-normal text-left bg-card text-card-foreground cursor-pointer"
+                class="w-full min-h-9 data-[size=default]:h-auto whitespace-normal text-left bg-card text-card-foreground "
               >
                 {arrActionLabel(arrAction)}
               </Select.Trigger>
@@ -1042,6 +1078,24 @@
                     )}
                   >
                     {arrActionLabel("unmonitor_delete_monitor_new_seasons")}
+                  </Select.Item>
+                {/if}
+                {#if targetScope === "season" || targetScope === "movie_version"}
+                  <Select.Item
+                    value="unmonitor_delete_list_exclusion"
+                    label={arrActionLabel("unmonitor_delete_list_exclusion")}
+                  >
+                    {arrActionLabel("unmonitor_delete_list_exclusion")}
+                  </Select.Item>
+                {/if}
+                {#if targetScope === "season"}
+                  <Select.Item
+                    value="unmonitor_delete_monitor_or_exclude"
+                    label={arrActionLabel(
+                      "unmonitor_delete_monitor_or_exclude",
+                    )}
+                  >
+                    {arrActionLabel("unmonitor_delete_monitor_or_exclude")}
                   </Select.Item>
                 {/if}
                 <Select.Item
@@ -1093,9 +1147,7 @@
                     qualityProfileId = Number.isFinite(parsed) ? parsed : null;
                   }}
                 >
-                  <Select.Trigger
-                    class="w-full bg-card text-card-foreground cursor-pointer"
-                  >
+                  <Select.Trigger class="w-full bg-card text-card-foreground ">
                     {qualityProfiles.find(
                       (profile) => profile.id === qualityProfileId,
                     )?.name ?? "Select a profile"}
@@ -1146,6 +1198,25 @@
               series monitoring and Monitor New Seasons. Announced seasons
               count; specials do not. Other seasons keep their monitoring
               settings. Requires an available Sonarr instance.
+            </p>
+          {:else if arrAction === "unmonitor_delete_list_exclusion" || arrAction === "unmonitor_delete_monitor_or_exclude"}
+            <p class="text-xs text-muted-foreground">
+              Keeps the entry in {selectedArrName} after removing files.
+              {#if targetScope === "season"}
+                Adds a list exclusion only when Sonarr reports the show as ended
+                and the removed season is the latest known regular season.
+                Announced seasons count; specials do not.
+                {#if arrAction === "unmonitor_delete_monitor_or_exclude"}
+                  Otherwise, enables series and new-season monitoring only when
+                  the latest regular season is removed. The ended branch takes
+                  precedence.
+                {/if}
+              {:else}
+                Unmonitors the movie and adds an import list exclusion after
+                file removal. Requires filesystem access on the Reclaimerr host.
+              {/if}
+              Applies to deletion and moves. Requires an available {selectedArrName}
+              instance.
             </p>
           {:else if arrAction === "unmonitor_only"}
             <p class="text-xs text-muted-foreground">
@@ -1449,7 +1520,7 @@
                       {#if ruleUsesRequesterWatch && entry.tmdb_id !== null}
                         <button
                           type="button"
-                          class="text-xs leading-5 px-2 rounded-2xl border border-border bg-card text-muted-foreground hover:text-foreground cursor-pointer"
+                          class="text-xs leading-5 px-2 rounded-2xl border border-border bg-card text-muted-foreground hover:text-foreground"
                           onclick={() => void openRequesterWatchExplain(entry)}
                         >
                           Why?

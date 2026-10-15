@@ -43,11 +43,7 @@
             )}
           </div>
         </div>
-        <Button
-          size="icon"
-          class="cursor-pointer rounded-full size-8"
-          onclick={onClose}
-        >
+        <Button size="icon" class="rounded-full size-8" onclick={onClose}>
           <X class="size-4" />
         </Button>
       </div>

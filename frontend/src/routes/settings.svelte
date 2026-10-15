@@ -380,7 +380,7 @@
   let confirmTitle = $state("");
   let confirmDescription = $state("");
   let confirmActionLabel = $state("Confirm");
-  let confirmActionClass = $state("cursor-pointer hover");
+  let confirmActionClass = $state("hover");
   let confirmIntent = $state<ConfirmIntent | null>(null);
 
   type TracearrCandidate = {
@@ -405,6 +405,7 @@
     media_servers: TracearrMediaServer[];
   } | null>(null);
   let discoveringTracearr = $state(false);
+  let tautulliPlexServers = $state<Array<{ id: number; name: string }>>([]);
 
   // helper to get instance name for select trigger
   const getArrInstanceName = (serviceId: string, id: number | null) => {
@@ -455,8 +456,8 @@
     confirmDescription = options.description;
     confirmActionLabel = options.actionLabel;
     confirmActionClass = options.destructive
-      ? "cursor-pointer hover bg-destructive text-destructive-foreground hover:bg-destructive/90"
-      : "cursor-pointer hover";
+      ? "hover bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      : "hover";
     showConfirmDialog = true;
   };
 
@@ -875,6 +876,9 @@
         >
       >("/api/settings/services");
 
+      tautulliPlexServers = (
+        rawServices[SettingsTab.Plex]?.instances ?? []
+      ).map((server) => ({ id: server.id, name: server.name }));
       for (const [serviceId, config] of Object.entries(rawServices)) {
         if ((MEDIA_SERVERS as readonly string[]).includes(serviceId)) continue;
         const instance =
@@ -914,6 +918,22 @@
       loading = false;
     }
   };
+
+  $effect(() => {
+    if (activeTab === SettingsTab.Tautulli) {
+      void get_api<
+        Record<string, { instances?: Array<{ id: number; name: string }> }>
+      >("/api/settings/services")
+        .then((services) => {
+          tautulliPlexServers = (
+            services[SettingsTab.Plex]?.instances ?? []
+          ).map((server) => ({ id: server.id, name: server.name }));
+        })
+        .catch((error: Error) =>
+          toast.error("Could not load Plex servers: " + error.message),
+        );
+    }
+  });
 
   // helper to load icon from tabs
   const getTabIcon = (tabId: SettingsTab) => {
@@ -958,7 +978,7 @@
               id="settings-tab-select"
               bind:value={activeTab}
               class="w-full px-4 py-3 bg-background border border-input rounded-lg text-foreground
-                     appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring
+                     appearance-none focus:outline-none focus:ring-2 focus:ring-ring
                      focus:border-transparent pr-10"
             >
               {#each filteredTabGroups as group}
@@ -1003,7 +1023,7 @@
               {#each group.tabs as tab}
                 <button
                   class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm transition-colors
-                    cursor-pointer
+
                     {activeTab === tab.id
                     ? 'bg-primary/10 text-primary font-medium'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
@@ -1073,7 +1093,7 @@
                 <div class="flex flex-wrap items-center gap-2">
                   <Button
                     size="sm"
-                    class="cursor-pointer bg-add/70 hover:bg-add/80"
+                    class="bg-add/70 hover:bg-add/80"
                     onclick={() => newArrInstance(activeTab)}
                   >
                     <Plus class="size-3.5" />
@@ -1081,7 +1101,7 @@
                   </Button>
                   <Button
                     size="sm"
-                    class="cursor-pointer bg-destructive/70 hover:bg-destructive/80"
+                    class="bg-destructive/70 hover:bg-destructive/80"
                     onclick={() => deleteArrInstance(activeTab)}
                     disabled={!serviceState[activeTab].config.id}
                   >
@@ -1117,6 +1137,37 @@
               extraSettings={serviceState[activeTab].config.extraSettings ?? {}}
               onchange={handleServiceChange}
             />
+            {#if activeTab === SettingsTab.Tautulli}
+              <div class="mt-5 space-y-2">
+                <label for="tautulli-plex-server" class="text-sm font-medium"
+                  >Plex server</label
+                >
+                <select
+                  id="tautulli-plex-server"
+                  class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  value={serviceState[SettingsTab.Tautulli].config.extraSettings
+                    ?.plex_service_config_id ?? ""}
+                  onchange={(event) => {
+                    serviceState[SettingsTab.Tautulli].config.extraSettings = {
+                      ...serviceState[SettingsTab.Tautulli].config
+                        .extraSettings,
+                      plex_service_config_id: event.currentTarget.value
+                        ? Number(event.currentTarget.value)
+                        : null,
+                    };
+                  }}
+                >
+                  <option value="">Choose a Plex server</option>
+                  {#each tautulliPlexServers as server}
+                    <option value={server.id}>{server.name}</option>
+                  {/each}
+                </select>
+                <p class="text-xs text-muted-foreground">
+                  The Plex server this Tautulli instance tracks. Changing it
+                  remaps retained Tautulli history to that server.
+                </p>
+              </div>
+            {/if}
             {#if activeTab === SettingsTab.Tracearr}
               <div class="mt-5 rounded-lg border border-border p-4 space-y-4">
                 <div class="flex flex-wrap items-start justify-between gap-3">
@@ -1125,16 +1176,15 @@
                       Playback history bindings
                     </h3>
                     <p class="mt-1 text-xs text-muted-foreground">
-                      A bound server uses Tracearr only for durable history.
-                      Unbound Jellyfin, Emby, and Plex servers keep using
-                      Playback Reporting or Tautulli. Native watch snapshots
-                      remain available.
+                      Automatic uses Tracearr for bound servers. Choose a
+                      different provider in Media Servers to override it. Native
+                      watch snapshots remain available.
                     </p>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    class="cursor-pointer gap-2"
+                    class="gap-2"
                     onclick={discoverTracearrServers}
                     disabled={discoveringTracearr ||
                       !serviceState[activeTab].config.baseUrl}
@@ -1237,7 +1287,7 @@
                 <Button
                   onclick={() => deleteArrInstance(activeTab)}
                   disabled={savingService || testingService}
-                  class="cursor-pointer gap-2 bg-destructive/80 hover:bg-destructive text-destructive-foreground"
+                  class="gap-2 bg-destructive/80 hover:bg-destructive text-destructive-foreground"
                 >
                   <Trash2 class="size-4" />
                   Delete
@@ -1247,7 +1297,7 @@
                 onclick={() => testServiceConnection(activeTab)}
                 disabled={testingService || savingService}
                 status={serviceTestStatus[activeTab]}
-                class="cursor-pointer gap-2"
+                class="gap-2"
                 size="default"
               >
                 Test
@@ -1255,7 +1305,7 @@
               <Button
                 onclick={() => saveServiceSettings(activeTab)}
                 disabled={savingService || testingService}
-                class="cursor-pointer gap-2"
+                class="gap-2"
               >
                 {#if savingService}
                   <Spinner class="size-4" />
@@ -1337,7 +1387,7 @@
     </AlertDialog.Header>
     <AlertDialog.Footer class="flex justify-end gap-3 pt-4">
       <AlertDialog.Cancel
-        class="cursor-pointer hover text-foreground bg-secondary"
+        class="hover text-foreground bg-secondary"
         onclick={closeConfirmDialog}
       >
         Cancel

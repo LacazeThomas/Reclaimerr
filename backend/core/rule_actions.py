@@ -12,6 +12,15 @@ from backend.core.seerr_identity import (
 ArrServiceName = Literal["radarr", "sonarr"]
 
 ARR_ACTION_MONITOR_NEW_SEASONS = "unmonitor_delete_monitor_new_seasons"
+ARR_ACTION_LIST_EXCLUSION = "unmonitor_delete_list_exclusion"
+ARR_ACTION_MONITOR_OR_EXCLUDE = "unmonitor_delete_monitor_or_exclude"
+SEASON_FINALIZATION_ACTIONS = frozenset(
+    {
+        ARR_ACTION_MONITOR_NEW_SEASONS,
+        ARR_ACTION_LIST_EXCLUSION,
+        ARR_ACTION_MONITOR_OR_EXCLUDE,
+    }
+)
 
 SEERR_REQUESTER_FIELD = "seerr.requested_by_user_ids"
 

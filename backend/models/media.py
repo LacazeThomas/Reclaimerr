@@ -645,6 +645,7 @@ class CandidateReasonCondition(BaseModel):
     # percent behind `Season fully watched is true`.
     details: list[str] = Field(default_factory=list)
     display: str
+    history_sources: list[dict[str, str]] = Field(default_factory=list)
 
 
 class CandidateReasonPart(BaseModel):
@@ -934,6 +935,8 @@ class ReclaimHistoryAttributes(BaseModel):
     dolby_vision: bool | None = None
     sonarr_monitor_new_seasons: Literal["enabled", "skipped", "failed"] | None = None
     sonarr_monitor_new_seasons_error: str | None = None
+    arr_list_exclusion: Literal["added", "skipped", "failed"] | None = None
+    arr_list_exclusion_error: str | None = None
 
 
 class ReclaimHistoryEntry(BaseModel):

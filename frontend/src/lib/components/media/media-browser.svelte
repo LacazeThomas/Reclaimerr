@@ -350,8 +350,8 @@
 
       <!-- candidates filter + poster size -->
       <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-        <label class="flex items-center gap-2 cursor-pointer">
-          <Switch bind:checked={candidatesOnly} class="cursor-pointer" />
+        <label class="flex items-center gap-2">
+          <Switch bind:checked={candidatesOnly} />
           <span class="text-sm text-muted-foreground"
             >Reclaim candidates only</span
           >
@@ -393,7 +393,7 @@
               max="300"
               step="10"
               bind:value={posterSize}
-              class="w-24 accent-primary cursor-pointer"
+              class="w-24 accent-primary"
             />
           </label>
         </div>

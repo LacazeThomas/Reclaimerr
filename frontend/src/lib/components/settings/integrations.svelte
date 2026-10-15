@@ -372,7 +372,7 @@
       <div class="grid gap-3 md:grid-cols-[1fr_14rem_auto]">
         <Input placeholder="Home Assistant" bind:value={tokenName} />
         <Input type="datetime-local" bind:value={tokenExpiresAt} />
-        <Button class="cursor-pointer gap-2" onclick={createToken}>
+        <Button class="gap-2" onclick={createToken}>
           <Plus class="size-4" /> Create
         </Button>
       </div>
@@ -384,7 +384,6 @@
               type="button"
               variant="outline"
               size="sm"
-              class="cursor-pointer"
               onclick={() => (tokenScopes = [...readOnlyScopes])}
               >Read only</Button
             >
@@ -392,7 +391,6 @@
               type="button"
               variant="outline"
               size="sm"
-              class="cursor-pointer"
               onclick={() =>
                 (tokenScopes = scopeOptions.map((option) => option.value))}
               >Full automation</Button
@@ -401,9 +399,7 @@
         </div>
         <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {#each scopeOptions as option}
-            <label
-              class="flex cursor-pointer items-start gap-2 rounded-md p-2 hover:bg-muted"
-            >
+            <label class="flex items-start gap-2 rounded-md p-2 hover:bg-muted">
               <input
                 class="mt-1"
                 type="checkbox"
@@ -428,12 +424,7 @@
           </p>
           <div class="mt-2 flex gap-2">
             <Input readonly value={createdToken.token} class="font-mono" />
-            <Button
-              size="icon"
-              class="cursor-pointer"
-              onclick={copyToken}
-              aria-label="Copy token"
-            >
+            <Button size="icon" onclick={copyToken} aria-label="Copy token">
               <Copy class="size-4" />
             </Button>
           </div>
@@ -458,7 +449,6 @@
               <Button
                 variant="destructive"
                 size="sm"
-                class="cursor-pointer"
                 onclick={() => revokeToken(token.id)}
               >
                 Revoke
@@ -477,7 +467,7 @@
             Failed deliveries retry automatically and survive server restarts.
           </p>
         </div>
-        <Button size="sm" class="cursor-pointer gap-2" onclick={addWebhook}>
+        <Button size="sm" class="gap-2" onclick={addWebhook}>
           <Plus class="size-4" /> Add webhook
         </Button>
       </div>
@@ -493,18 +483,14 @@
               <Button
                 variant="outline"
                 size="sm"
-                class="cursor-pointer"
                 onclick={() => testWebhook(webhook)}>Test</Button
               >
-              <Button
-                size="sm"
-                class="cursor-pointer"
-                onclick={() => saveWebhook(webhook)}>Save</Button
+              <Button size="sm" onclick={() => saveWebhook(webhook)}
+                >Save</Button
               >
               <Button
                 variant="destructive"
                 size="icon-sm"
-                class="cursor-pointer"
                 onclick={() => removeWebhook(webhook)}
                 aria-label="Remove webhook"
               >
@@ -542,7 +528,7 @@
               <Label class="mb-1">Events</Label>
               <div class="flex flex-wrap gap-x-4 gap-y-2 text-sm">
                 {#each eventOptions as option}
-                  <label class="flex cursor-pointer items-center gap-2">
+                  <label class="flex items-center gap-2">
                     <input
                       type="checkbox"
                       checked={webhook.event_types.includes(option.value)}
@@ -556,14 +542,14 @@
             <div>
               <Label class="mb-1">Media types</Label>
               <div class="flex gap-4 text-sm">
-                <label class="flex cursor-pointer items-center gap-2"
+                <label class="flex items-center gap-2"
                   ><input
                     type="checkbox"
                     checked={webhook.media_types.includes(MediaType.Movie)}
                     onchange={() => toggleMediaType(webhook, MediaType.Movie)}
                   /> Movies</label
                 >
-                <label class="flex cursor-pointer items-center gap-2"
+                <label class="flex items-center gap-2"
                   ><input
                     type="checkbox"
                     checked={webhook.media_types.includes(MediaType.Series)}
@@ -596,7 +582,6 @@
               <Button
                 variant="outline"
                 size="sm"
-                class="cursor-pointer"
                 onclick={() => addHeader(webhook)}>Add header</Button
               >
             </div>
@@ -611,7 +596,6 @@
                 <Button
                   variant="destructive"
                   size="icon-sm"
-                  class="cursor-pointer"
                   onclick={() => removeHeader(webhook, headerIndex)}
                   aria-label="Remove header"><Trash2 class="size-4" /></Button
                 >
@@ -639,12 +623,7 @@
             The latest durable webhook attempts.
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          class="cursor-pointer"
-          onclick={load}>Refresh</Button
-        >
+        <Button variant="outline" size="sm" onclick={load}>Refresh</Button>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
@@ -666,7 +645,6 @@
                   >{#if delivery.status === "failed"}<Button
                       variant="outline"
                       size="icon-sm"
-                      class="cursor-pointer"
                       onclick={() => retryDelivery(delivery)}
                       aria-label="Retry delivery"
                       ><RotateCcw class="size-4" /></Button

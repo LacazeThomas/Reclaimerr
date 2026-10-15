@@ -1512,14 +1512,14 @@
           sm:flex-row sm:items-center sm:justify-between"
       >
         <label
-          class="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
+          class="flex flex-wrap items-center gap-2 text-sm font-medium text-foreground"
         >
           <input
             type="checkbox"
             checked={allPageSelected}
             indeterminate={allPagePartiallySelected}
             onchange={toggleSelectAll}
-            class="cursor-pointer accent-primary"
+            class="accent-primary"
           />
           Select all on this page
         </label>
@@ -1542,11 +1542,7 @@
           </span>
         </span>
         <div class="flex flex-wrap gap-2 justify-end">
-          <Button
-            size="sm"
-            class="cursor-pointer"
-            onclick={() => (selectedIds = new Set())}
-          >
+          <Button size="sm" onclick={() => (selectedIds = new Set())}>
             <Eraser class="size-4" />
             Clear
           </Button>
@@ -1556,7 +1552,7 @@
               <Tooltip.Trigger>
                 <Button
                   size="sm"
-                  class="cursor-pointer bg-green-600/80 hover:bg-green-600/60"
+                  class="bg-green-600/80 hover:bg-green-600/60"
                   onclick={() => (bulkDialogOpen = true)}
                 >
                   <Shield class="size-4" />
@@ -1575,7 +1571,7 @@
               <Tooltip.Trigger>
                 <Button
                   size="sm"
-                  class="cursor-pointer bg-amber-500/80 hover:bg-amber-500/60"
+                  class="bg-amber-500/80 hover:bg-amber-500/60"
                   onclick={() => (bulkMoveDialogOpen = true)}
                 >
                   <FolderOutput class="size-4" />
@@ -1594,7 +1590,7 @@
               <Tooltip.Trigger>
                 <Button
                   size="sm"
-                  class="cursor-pointer bg-destructive/80 hover:bg-destructive/60"
+                  class="bg-destructive/80 hover:bg-destructive/60"
                   onclick={() => (bulkDeleteDialogOpen = true)}
                 >
                   <Trash2 class="size-4" />

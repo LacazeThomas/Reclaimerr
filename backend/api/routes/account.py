@@ -57,6 +57,13 @@ from backend.models.auth import (
 from backend.services.admin_notices import resolve_singleton_notice
 from backend.services.media_auth import media_auth_conflict_notice_key_for_source
 from backend.services.smtp import auto_enable_system_email
+from backend.services.user_import import (
+    CSV_TEMPLATE,
+    MAX_CSV_BYTES,
+    UserImportResponse,
+    parse_user_csv,
+    summarize_import,
+)
 from backend.user_types import DEFAULT_NEW_USER_ALLOWED_PAGES
 
 router = APIRouter(prefix="/api/account", tags=["account"])
@@ -351,6 +358,75 @@ async def unlink_media_identity(
     if row is None:
         raise HTTPException(status_code=404, detail="Media identity not found")
     return _serialize_media_identity(row[0], row[1], row[2])
+
+
+@router.get("/users/import/template")
+async def user_import_template(
+    _actor: Annotated[User, Depends(require_permission(Permission.MANAGE_USERS))],
+) -> Response:
+    return Response(
+        CSV_TEMPLATE,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": 'attachment; filename="reclaimerr-users-template.csv"'
+        },
+    )
+
+
+@router.post("/users/import", response_model=UserImportResponse)
+async def import_users_csv(
+    actor: Annotated[User, Depends(require_permission(Permission.MANAGE_USERS))],
+    file: UploadFile = File(...),
+    preview: bool = Query(default=True),
+    db: AsyncSession = Depends(get_db),
+) -> UserImportResponse:
+    contents = await file.read(MAX_CSV_BYTES + 1)
+    users = list((await db.execute(select(User))).scalars().all())
+    try:
+        entries = parse_user_csv(contents, users)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    summary = summarize_import(entries)
+    if preview or summary.errors or not summary.ready:
+        return summary
+
+    allowed_pages = await _default_allowed_pages_for_new_user(db)
+    try:
+        for entry in entries:
+            if entry.result.status != "ready" or entry.request is None:
+                continue
+            request = entry.request
+            password_hash = (
+                await asyncio.to_thread(get_password_hash, request.password)
+                if entry.has_password
+                else ""
+            )
+            user = User(
+                username=request.username,
+                email=request.email,
+                display_name=request.display_name or request.username,
+                password_hash=password_hash,
+                role=UserRole.USER,
+                permissions=[Permission.REQUEST.value],
+                allowed_pages=list(allowed_pages),
+                require_password_change=entry.has_password,
+            )
+            db.add(user)
+            await db.flush()
+            await auto_enable_system_email(db, user)
+            entry.result.status = "created"
+            entry.result.message = "Account created"
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Accounts changed during import. Preview the CSV again; no users were imported.",
+        ) from None
+    LOG.info(
+        f"User manager {actor.username} imported {summarize_import(entries).created} users"
+    )
+    return summarize_import(entries)
 
 
 @router.post("/users", response_model=UserInfo)

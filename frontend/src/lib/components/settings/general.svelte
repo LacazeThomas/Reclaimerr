@@ -682,7 +682,7 @@
                   value={mappingScopeValue(mapping)}
                   onValueChange={(value) => setMappingScope(mapping, value)}
                 >
-                  <Select.Trigger class="w-full cursor-pointer text-foreground">
+                  <Select.Trigger class="w-full text-foreground">
                     {#if mappingScopeValue(mapping) === "global"}
                       Global
                     {:else if mappingScopeValue(mapping).startsWith("type:")}
@@ -695,15 +695,12 @@
                     {/if}
                   </Select.Trigger>
                   <Select.Content>
-                    <Select.Item value="global" class="cursor-pointer"
-                      >Global</Select.Item
-                    >
+                    <Select.Item value="global">Global</Select.Item>
                     {#if serviceTypeOptions.length > 0}
                       <Select.Separator />
                       {#each serviceTypeOptions as serviceType}
-                        <Select.Item
-                          value={`type:${serviceType}`}
-                          class="cursor-pointer">Any {serviceType}</Select.Item
+                        <Select.Item value={`type:${serviceType}`}
+                          >Any {serviceType}</Select.Item
                         >
                       {/each}
                     {/if}
@@ -711,9 +708,7 @@
                       <Select.Separator />
                       <Select.Label>Configured services</Select.Label>
                       {#each pathMappingScopes as scope}
-                        <Select.Item
-                          value={`config:${scope.id}`}
-                          class="cursor-pointer"
+                        <Select.Item value={`config:${scope.id}`}
                           >{scope.name} ({scope.service_type})</Select.Item
                         >
                       {/each}
@@ -724,7 +719,7 @@
                 <!-- remove mapping button -->
                 <Button
                   size="icon-sm"
-                  class="bg-destructive/70 hover:bg-destructive/80 cursor-pointer shrink-0"
+                  class="bg-destructive/70 hover:bg-destructive/80 shrink-0"
                   onclick={() => removePathMapping(i)}
                   aria-label="Remove mapping"
                 >
@@ -749,7 +744,7 @@
             {#each pathSuggestions as suggestion}
               <button
                 type="button"
-                class="cursor-pointer rounded border border-border bg-muted/40 px-1.5 py-0.5
+                class="rounded border border-border bg-muted/40 px-1.5 py-0.5
                   font-mono text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                 onclick={() => {
                   const empty = pathMappings.findIndex(
@@ -776,11 +771,7 @@
       </div>
 
       <!-- add mapping button -->
-      <Button
-        size="sm"
-        class="mt-3 cursor-pointer gap-2"
-        onclick={addPathMapping}
-      >
+      <Button size="sm" class="mt-3 gap-2" onclick={addPathMapping}>
         <Plus class="size-4" />
         Add mapping
       </Button>
@@ -875,18 +866,18 @@
           >
             <Select.Trigger
               id="leavingSoonCollectionSort"
-              class="w-full cursor-pointer text-foreground"
+              class="w-full text-foreground"
             >
               {LEAVING_SOON_SORT_LABELS[leavingSoonCollectionSort]}
             </Select.Trigger>
             <Select.Content>
-              <Select.Item value="default" class="cursor-pointer">
+              <Select.Item value="default">
                 {LEAVING_SOON_SORT_LABELS.default}
               </Select.Item>
-              <Select.Item value="alpha" class="cursor-pointer">
+              <Select.Item value="alpha">
                 {LEAVING_SOON_SORT_LABELS.alpha}
               </Select.Item>
-              <Select.Item value="leaving_soonest" class="cursor-pointer">
+              <Select.Item value="leaving_soonest">
                 {LEAVING_SOON_SORT_LABELS.leaving_soonest}
               </Select.Item>
             </Select.Content>
@@ -912,7 +903,7 @@
           <div class="grid gap-2 sm:grid-cols-2 max-w-2xl mt-3">
             <Label
               class="flex items-start gap-2 rounded-md border border-border bg-background/40 p-3 text-sm
-                text-foreground cursor-pointer"
+                text-foreground "
             >
               <Checkbox bind:checked={leavingSoonVisibleOnRecommended} />
               <span>
@@ -924,7 +915,7 @@
             </Label>
             <Label
               class="flex items-start gap-2 rounded-md border border-border bg-background/40 p-3 text-sm
-                text-foreground cursor-pointer"
+                text-foreground "
             >
               <Checkbox bind:checked={leavingSoonVisibleOnHome} />
               <span>
@@ -943,7 +934,7 @@
             >Visible on (Emby)</span
           >
           <Label
-            class="flex items-start gap-2 rounded-md border border-border bg-background/40 p-3 text-sm text-foreground cursor-pointer max-w-2xl mt-3"
+            class="flex items-start gap-2 rounded-md border border-border bg-background/40 p-3 text-sm text-foreground max-w-2xl mt-3"
           >
             <Checkbox bind:checked={leavingSoonEmbyHomeEnabled} />
             <span>
@@ -1002,7 +993,6 @@
                   <Button
                     variant="secondary"
                     size="sm"
-                    class="cursor-pointer"
                     disabled={artworkBusy.poster[kind]}
                     onclick={() => artworkInputs.poster[kind]?.click()}
                   >
@@ -1019,7 +1009,7 @@
                     <Button
                       variant="ghost"
                       size="sm"
-                      class="cursor-pointer text-destructive"
+                      class="text-destructive"
                       disabled={artworkBusy.poster[kind]}
                       onclick={() => removeArtwork("poster", kind)}
                     >
@@ -1090,7 +1080,6 @@
                   <Button
                     variant="secondary"
                     size="sm"
-                    class="cursor-pointer"
                     disabled={artworkBusy.thumb[kind]}
                     onclick={() => artworkInputs.thumb[kind]?.click()}
                   >
@@ -1107,7 +1096,7 @@
                     <Button
                       variant="ghost"
                       size="sm"
-                      class="cursor-pointer text-destructive"
+                      class="text-destructive"
                       disabled={artworkBusy.thumb[kind]}
                       onclick={() => removeArtwork("thumb", kind)}
                     >
@@ -1288,7 +1277,7 @@
         {#each PAGE_ACCESS_OPTIONS as option}
           <Label
             class="flex items-start gap-2 rounded-md border border-border bg-background/40 p-3 text-sm
-              text-foreground cursor-pointer"
+              text-foreground "
           >
             <Checkbox
               checked={defaultAllowedPages.includes(option.value)}
@@ -1456,7 +1445,7 @@
         >
           <Select.Trigger
             id="defaultArrDeleteBehavior"
-            class="w-full cursor-pointer text-foreground"
+            class="w-full text-foreground"
           >
             {defaultArrDeleteBehavior === "remove_if_empty"
               ? "Remove from ARR when empty"
@@ -1465,13 +1454,13 @@
                 : "Unmonitor after deletion"}
           </Select.Trigger>
           <Select.Content>
-            <Select.Item value="unmonitor" class="cursor-pointer">
+            <Select.Item value="unmonitor">
               Unmonitor after deletion
             </Select.Item>
-            <Select.Item value="unmonitor_only" class="cursor-pointer">
+            <Select.Item value="unmonitor_only">
               Unmonitor only (keep files)
             </Select.Item>
-            <Select.Item value="remove_if_empty" class="cursor-pointer">
+            <Select.Item value="remove_if_empty">
               Remove from ARR when empty
             </Select.Item>
           </Select.Content>
@@ -1501,7 +1490,7 @@
         <Button
           variant="destructive"
           size="sm"
-          class="cursor-pointer gap-2"
+          class="gap-2"
           disabled={shuttingDown || shutdownDone}
           onclick={shutdownApp}
         >
@@ -1520,7 +1509,7 @@
       <Button
         onclick={saveSettings}
         disabled={savingSettings || leavingSoonTitlesCollide}
-        class="cursor-pointer gap-2"
+        class="gap-2"
       >
         {#if savingSettings}
           <Spinner class="size-4" />

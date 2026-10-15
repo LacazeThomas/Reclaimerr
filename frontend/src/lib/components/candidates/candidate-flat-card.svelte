@@ -61,7 +61,7 @@
         type="checkbox"
         checked={selectedIds.has(entry.id)}
         onchange={() => toggleSelect(entry.id)}
-        class="mt-1 cursor-pointer accent-primary"
+        class="mt-1 accent-primary"
       />
     {/if}
     <div class="flex-1">

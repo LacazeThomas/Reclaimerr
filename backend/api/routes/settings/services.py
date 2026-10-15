@@ -33,6 +33,7 @@ from backend.database.models import (
     Movie,
     MovieArrRef,
     MovieVersion,
+    PlaybackHistoryEvent,
     ReclaimRule,
     Series,
     SeriesArrRef,
@@ -56,6 +57,7 @@ from backend.models.settings import (
     TracearrDiscoveryRequest,
     UpdateMediaLibrariesRequest,
 )
+from backend.services.playback_selection import resolve_history_sources
 from backend.services.tracearr import TracearrClient
 from backend.tasks.external_ratings import (
     DEFAULT_MDBLIST_REQUEST_LIMIT,
@@ -563,9 +565,19 @@ async def get_service_settings(
             }
         )
 
+    history_sources = resolve_history_sources(list(service_configs))
     response: dict[str, Any] = {}
     for config in service_configs:
         payload = _service_config_payload(config)
+        if config.id in history_sources:
+            source = history_sources[config.id]
+            payload["history_source"] = {
+                "preference": source.preference,
+                "provider": "playback_reporting"
+                if source.provider in {Service.JELLYFIN, Service.EMBY}
+                else source.provider,
+                "error": source.error,
+            }
         if config.service_type in MEDIA_SERVERS and config.is_main:
             # Rows predating the service_config_id column carry NULL; they
             # belong to main by definition, since nothing else ever wrote them.
@@ -656,6 +668,29 @@ async def set_service_settings(
     service_name = data.name or _default_service_name(data.service_type)
     existing_result = await _find_existing_service_config(db, data, service_name)
     existing_config = existing_result.scalar_one_or_none()
+
+    # Preserve extra settings for older clients and server promotion requests.
+    supplied_settings = dict(data.extra_settings or {})
+    for runtime_key in ("playback_history_sync", "native_playback_sync"):
+        supplied_settings.pop(runtime_key, None)
+    data.extra_settings = {
+        **((existing_config.extra_settings or {}) if existing_config else {}),
+        **supplied_settings,
+    }
+    if data.service_type == Service.TAUTULLI:
+        binding_id = data.extra_settings.get("plex_service_config_id")
+        if binding_id is not None:
+            bound_server = await db.get(ServiceConfig, binding_id)
+            if bound_server is None or bound_server.service_type != Service.PLEX:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Tautulli must bind to an existing Plex server",
+                )
+    previous_tautulli_binding = (
+        (existing_config.extra_settings or {}).get("plex_service_config_id")
+        if existing_config and data.service_type == Service.TAUTULLI
+        else None
+    )
 
     # if the client omitted the api_key (unchanged masked field), resolve the
     # existing key from the database so we don't overwrite it with garbage
@@ -777,7 +812,54 @@ async def set_service_settings(
     if data.service_type in MEDIA_SERVERS and data.libraries:
         await _upsert_service_libraries(db, data.libraries)
 
-    if data.service_type is Service.TRACEARR:
+    if data.service_type in MEDIA_SERVERS | {Service.TRACEARR, Service.TAUTULLI}:
+        if data.service_type == Service.TAUTULLI and previous_tautulli_binding != (
+            data.extra_settings or {}
+        ).get("plex_service_config_id"):
+            await db.execute(
+                sql_update(PlaybackHistoryEvent)
+                .where(PlaybackHistoryEvent.source_service_config_id == saved_config.id)
+                .values(
+                    observed_service_config_id=(data.extra_settings or {}).get(
+                        "plex_service_config_id"
+                    ),
+                    tmdb_id=None,
+                    season_number=None,
+                    episode_number=None,
+                    movie_id=None,
+                    series_id=None,
+                    season_id=None,
+                    episode_id=None,
+                )
+            )
+        # Preserve event cursors but invalidate cached attempts and aggregates.
+        history_configs = (
+            await db.scalars(
+                select(ServiceConfig).where(
+                    ServiceConfig.service_type.in_(
+                        MEDIA_SERVERS | {Service.TRACEARR, Service.TAUTULLI}
+                    )
+                )
+            )
+        ).all()
+        for history_config in history_configs:
+            extra = dict(history_config.extra_settings or {})
+            state = dict(extra.get("playback_history_sync") or {})
+            state.pop("last_attempt_at", None)
+            state["aggregate_format_version"] = 0
+            if (
+                history_config.id == saved_config.id
+                and data.service_type == Service.TAUTULLI
+                and previous_tautulli_binding != extra.get("plex_service_config_id")
+            ):
+                state.pop("last_success_at", None)
+            state["bindings"] = {
+                key: {k: v for k, v in value.items() if k != "last_attempt_at"}
+                for key, value in state.get("bindings", {}).items()
+            }
+            extra["playback_history_sync"] = state
+            history_config.extra_settings = extra
+        await db.commit()
         await enqueue_task_run(Task.REFRESH_PLAYBACK_HISTORY)
 
     return {
@@ -791,7 +873,7 @@ async def set_service_settings(
             "api_key": _mask_api_key(resolved_api_key),
             "enabled": data.enabled,
             "is_main": data.is_main,
-            "extra_settings": data.extra_settings,
+            "extra_settings": saved_config.extra_settings,
         },
     }
 
@@ -923,7 +1005,7 @@ async def delete_service_settings(
             f"Service config {config_id} was deleted, but runtime cleanup failed: {e}"
         )
 
-    if service_type is Service.TRACEARR or service_type in MEDIA_SERVERS:
+    if service_type in MEDIA_SERVERS | {Service.TRACEARR, Service.TAUTULLI}:
         await enqueue_task_run(Task.REFRESH_PLAYBACK_HISTORY)
 
     return {

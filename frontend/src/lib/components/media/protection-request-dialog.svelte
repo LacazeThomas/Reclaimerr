@@ -462,7 +462,7 @@
               <div class="px-4 py-3 space-y-1 bg-card">
                 <!-- whole movie option -->
                 <label
-                  class="flex items-center gap-3 py-1.5 px-1 cursor-pointer
+                  class="flex items-center gap-3 py-1.5 px-1
                     rounded hover:bg-muted/40"
                 >
                   <input
@@ -470,7 +470,7 @@
                     name="version-pick"
                     checked={selectedVersionId === null}
                     onchange={() => (selectedVersionId = null)}
-                    class="accent-primary cursor-pointer"
+                    class="accent-primary"
                   />
                   <span class="text-sm text-foreground font-medium flex-1"
                     >Entire title - all libraries and versions</span
@@ -485,14 +485,14 @@
                   {#each media.versions ?? [] as version (version.id)}
                     <label
                       class="flex items-center gap-3 py-1.5 px-1
-                        cursor-pointer rounded hover:bg-muted/40"
+                        rounded hover:bg-muted/40"
                     >
                       <input
                         type="radio"
                         name="version-pick"
                         checked={selectedVersionId === version.id}
                         onchange={() => (selectedVersionId = version.id)}
-                        class="accent-primary cursor-pointer"
+                        class="accent-primary"
                       />
                       <span class="text-sm text-foreground flex-1">
                         {version.library_name}{version.service_name
@@ -541,14 +541,14 @@
                 {:else}
                   <div class="space-y-2">
                     <label
-                      class="flex items-center gap-3 py-1.5 px-1 cursor-pointer rounded hover:bg-muted/40"
+                      class="flex items-center gap-3 py-1.5 px-1 rounded hover:bg-muted/40"
                     >
                       <input
                         type="radio"
                         name="series-scope"
                         checked={scopeMode === "series"}
                         onchange={() => (scopeMode = "series")}
-                        class="accent-primary cursor-pointer"
+                        class="accent-primary"
                       />
                       <span class="text-sm text-foreground font-medium flex-1">
                         Whole series
@@ -556,14 +556,14 @@
                     </label>
 
                     <label
-                      class="flex items-center gap-3 py-1.5 px-1 cursor-pointer rounded hover:bg-muted/40"
+                      class="flex items-center gap-3 py-1.5 px-1 rounded hover:bg-muted/40"
                     >
                       <input
                         type="radio"
                         name="series-scope"
                         checked={scopeMode === "seasons"}
                         onchange={() => (scopeMode = "seasons")}
-                        class="accent-primary cursor-pointer"
+                        class="accent-primary"
                       />
                       <span class="text-sm text-foreground font-medium flex-1">
                         Specific seasons
@@ -587,14 +587,14 @@
                                 season.status.is_protected ||
                                 season.status.has_pending_request
                                   ? "cursor-not-allowed opacity-60"
-                                  : "cursor-pointer hover:bg-muted/40"
+                                  : "hover:bg-muted/40"
                               }`}
                             >
                               <input
                                 type="checkbox"
                                 checked={selectedSeasonIds.has(season.id)}
                                 onchange={() => toggleSeason(season.id)}
-                                class="accent-primary cursor-pointer"
+                                class="accent-primary"
                                 disabled={season.status.is_protected ||
                                   season.status.has_pending_request}
                               />
@@ -629,14 +629,14 @@
                     {/if}
 
                     <label
-                      class="flex items-center gap-3 py-1.5 px-1 cursor-pointer rounded hover:bg-muted/40"
+                      class="flex items-center gap-3 py-1.5 px-1 rounded hover:bg-muted/40"
                     >
                       <input
                         type="radio"
                         name="series-scope"
                         checked={scopeMode === "episodes"}
                         onchange={() => (scopeMode = "episodes")}
-                        class="accent-primary cursor-pointer"
+                        class="accent-primary"
                       />
                       <span class="text-sm text-foreground font-medium flex-1">
                         Specific episodes
@@ -674,14 +674,14 @@
                                     ep.status.is_protected ||
                                     ep.status.has_pending_request
                                       ? "cursor-not-allowed opacity-60"
-                                      : "cursor-pointer hover:bg-muted/40"
+                                      : "hover:bg-muted/40"
                                   }`}
                                 >
                                   <input
                                     type="checkbox"
                                     checked={selectedEpisodeIds.has(ep.id)}
                                     onchange={() => toggleEpisode(ep.id)}
-                                    class="accent-primary cursor-pointer"
+                                    class="accent-primary"
                                     disabled={ep.status.is_protected ||
                                       ep.status.has_pending_request}
                                   />
@@ -793,17 +793,12 @@
       <Dialog.Footer>
         <Button
           variant="secondary"
-          class="cursor-pointer"
           onclick={() => handleClose()}
           disabled={submitting}
         >
           Cancel
         </Button>
-        <Button
-          class="cursor-pointer"
-          onclick={handleSubmit}
-          disabled={submitting || !canSubmit}
-        >
+        <Button onclick={handleSubmit} disabled={submitting || !canSubmit}>
           {#if submitting}
             {isAdmin ? "Protecting..." : "Submitting..."}
           {:else}

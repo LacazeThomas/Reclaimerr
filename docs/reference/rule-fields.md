@@ -50,6 +50,12 @@ Operators: `equals`, `exists`, `greater_than`, `greater_than_or_equal`, `less_th
 | `playback.play_count` | Playback plays | all |  |
 | `playback.total_duration_minutes` | Playback duration (minutes) | all | minutes |
 | `playback.unique_user_count` | Playback user count | all |  |
+| `playback_history.days_since_last_activity` | Days since recorded history activity | all | days |
+| `playback_history.days_since_last_completed` | Days since recorded completed watch | all | days |
+| `playback_history.longest_duration_minutes` | Longest recorded history playback (minutes) | all | minutes |
+| `playback_history.play_count` | Recorded history plays | all |  |
+| `playback_history.total_duration_minutes` | Recorded history duration (minutes) | all | minutes |
+| `playback_history.unique_user_count` | Recorded history user count | all |  |
 | `rottentomatoes.popcorn_meter` | Rotten Tomatoes Popcornmeter | all | whole number 0-100 |
 | `rottentomatoes.popcorn_vote_count` | Rotten Tomatoes Popcornmeter votes | all | whole number >= 0 |
 | `rottentomatoes.tomato_meter` | Rotten Tomatoes Tomatometer | all | whole number 0-100 |
@@ -92,6 +98,8 @@ Operators: `after`, `before`, `exists`, `not_exists`, `on_or_after`, `on_or_befo
 | `collection.latest_sibling_watched_at` | Collection sibling last watched | movie_version |  |
 | `episode.air_date` | Episode air date | episode |  |
 | `playback.last_activity_at` | Last playback activity | all |  |
+| `playback_history.last_activity_at` | Last recorded history activity | all |  |
+| `playback_history.last_completed_at` | Last recorded completed watch | all | latest explicit completion; episode completion for TV targets |
 | `season.air_date` | Season air date | season, episode |  |
 | `seerr.last_requested_at` | Seerr latest active request | all |  |
 | `tmdb.first_air_date` | TMDB first air date | series, season, episode |  |
@@ -110,6 +118,8 @@ Every operator here is valueless: omit `value`.
 | `arr.monitored` | Arr monitored | all |  |
 | `favorites.exists` | Favorited or watchlisted | all |  |
 | `playback.has_activity` | Playback activity | all |  |
+| `playback_history.has_activity` | Recorded history activity | all |  |
+| `playback_history.has_completed_watch` | Recorded completed watch | all | explicit provider completion; episode completion for TV targets |
 | `season.fully_watched` | Season fully watched | season, episode |  |
 | `season.is_latest_season` | Is latest season | season, episode |  |
 | `seerr.requested` | Seerr requested | all |  |
@@ -165,6 +175,7 @@ The item can hold several values (for example several genres). `value` is an arr
 | `media_server.collections` | Media server collections | all |  |
 | `playback.fully_watched_usernames` | Fully watched by users | all | install-specific usernames |
 | `playback.usernames` | Playback users | all | install-specific usernames |
+| `playback_history.usernames` | Recorded history users | all | install-specific usernames; selected provider only |
 | `plex.genres` | Plex genres | all |  |
 | `tmdb.genres` | TMDB genres | all |  |
 

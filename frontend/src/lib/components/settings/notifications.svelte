@@ -579,7 +579,7 @@
         <Button
           variant="outline"
           onclick={() => addNotification(NotificationChannel.SystemEmail)}
-          class="cursor-pointer gap-2"
+          class="gap-2"
         >
           <Mail />
           Add Email
@@ -592,12 +592,12 @@
             name: "Discord",
             url: DISCORD_PRESET_URL,
           })}
-        class="cursor-pointer gap-2"
+        class="gap-2"
       >
         <MessageSquare />
         Add Discord
       </Button>
-      <Button onclick={() => addNotification()} class="cursor-pointer gap-2">
+      <Button onclick={() => addNotification()} class="gap-2">
         <Plus />
         Add Notification Service
       </Button>
@@ -619,7 +619,7 @@
           <div class="border border-border rounded-lg bg-card">
             <!-- collapsible header -->
             <div
-              class="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/20
+              class="flex items-center justify-between p-4 hover:bg-muted/20
                 transition-colors gap-3"
               onclick={() => toggleExpanded(notification.id)}
               role="button"
@@ -654,7 +654,7 @@
                 onclick={(e) => e.stopPropagation()}
                 role="none"
               >
-                <label class="flex items-center gap-2 cursor-pointer">
+                <label class="flex items-center gap-2">
                   <span class="text-sm text-foreground">Enabled</span>
                   <Switch
                     checked={notification.enabled}
@@ -667,7 +667,6 @@
                   size="icon-sm"
                   onclick={() => deleteNotification(index)}
                   disabled={saving}
-                  class="cursor-pointer"
                 >
                   <Trash2 />
                 </Button>
@@ -707,7 +706,7 @@
                         <Button
                           size="icon"
                           variant="default"
-                          class="cursor-pointer shrink-0"
+                          class="shrink-0"
                           onclick={() => saveTitle(index)}
                         >
                           <Check />
@@ -715,7 +714,7 @@
                         <Button
                           size="icon"
                           variant="ghost"
-                          class="cursor-pointer shrink-0"
+                          class="shrink-0"
                           onclick={() => cancelEditTitle()}
                         >
                           <X />
@@ -733,7 +732,7 @@
                         <Button
                           size="icon"
                           variant="outline"
-                          class="cursor-pointer shrink-0"
+                          class="shrink-0"
                           onclick={() => startEditingTitle(index)}
                         >
                           <Pencil class="size-4" />
@@ -744,7 +743,7 @@
 
                   <!-- enable toggle and delete -->
                   <div class="flex items-center justify-between gap-3">
-                    <label class="flex items-center gap-2 cursor-pointer">
+                    <label class="flex items-center gap-2">
                       <span class="text-sm text-foreground">Enabled</span>
                       <Switch
                         checked={notification.enabled}
@@ -757,7 +756,6 @@
                       size="icon-sm"
                       onclick={() => deleteNotification(index)}
                       disabled={saving}
-                      class="cursor-pointer"
                     >
                       <Trash2 />
                     </Button>
@@ -786,7 +784,6 @@
                       <Button
                         size="icon"
                         variant="default"
-                        class="cursor-pointer"
                         onclick={() => saveTitle(index)}
                       >
                         <Check />
@@ -794,7 +791,6 @@
                       <Button
                         size="icon"
                         variant="ghost"
-                        class="cursor-pointer"
                         onclick={() => cancelEditTitle()}
                       >
                         <X />
@@ -812,7 +808,6 @@
                       <Button
                         size="icon"
                         variant="outline"
-                        class="cursor-pointer"
                         onclick={() => startEditingTitle(index)}
                       >
                         <Pencil />
@@ -907,7 +902,7 @@
                       {#if !notifType.adminOnly || isAdmin}
                         <label
                           class="flex items-start flex-wrap gap-3 p-3 border border-border rounded-lg
-                            cursor-pointer hover:bg-muted/50 transition-colors"
+                            hover:bg-muted/50 transition-colors"
                         >
                           <Switch
                             checked={notification[
@@ -951,9 +946,7 @@
                                     };
                                   }}
                                 >
-                                  <Select.Trigger
-                                    class="h-8 min-w-40 text-xs cursor-pointer"
-                                  >
+                                  <Select.Trigger class="h-8 min-w-40 text-xs ">
                                     {#if notification.preferences[NotificationType.NewCleanupCandidates]?.detail === "count_only"}
                                       Count only
                                     {:else if notification.preferences[NotificationType.NewCleanupCandidates]?.detail === "top_n_with_reasons"}
@@ -963,22 +956,13 @@
                                     {/if}
                                   </Select.Trigger>
                                   <Select.Content>
-                                    <Select.Item
-                                      value="count_only"
-                                      class="cursor-pointer"
-                                    >
+                                    <Select.Item value="count_only">
                                       Count only
                                     </Select.Item>
-                                    <Select.Item
-                                      value="top_n_summary"
-                                      class="cursor-pointer"
-                                    >
+                                    <Select.Item value="top_n_summary">
                                       Top N summary
                                     </Select.Item>
-                                    <Select.Item
-                                      value="top_n_with_reasons"
-                                      class="cursor-pointer"
-                                    >
+                                    <Select.Item value="top_n_with_reasons">
                                       Top N with reasons
                                     </Select.Item>
                                   </Select.Content>
@@ -1029,25 +1013,17 @@
                                     };
                                   }}
                                 >
-                                  <Select.Trigger
-                                    class="h-8 min-w-28 text-xs cursor-pointer"
-                                  >
+                                  <Select.Trigger class="h-8 min-w-28 text-xs ">
                                     {notification.preferences[notifType.type]
                                       ?.detail === "compact"
                                       ? "Compact"
                                       : "Standard"}
                                   </Select.Trigger>
                                   <Select.Content>
-                                    <Select.Item
-                                      value="compact"
-                                      class="cursor-pointer"
-                                    >
+                                    <Select.Item value="compact">
                                       Compact
                                     </Select.Item>
-                                    <Select.Item
-                                      value="standard"
-                                      class="cursor-pointer"
-                                    >
+                                    <Select.Item value="standard">
                                       Standard
                                     </Select.Item>
                                   </Select.Content>
@@ -1067,7 +1043,7 @@
                   <Button
                     onclick={() => testNotification(index)}
                     disabled={testingIndex !== null || saving}
-                    class="cursor-pointer gap-2"
+                    class="gap-2"
                   >
                     {#if testingIndex === index}
                       <Spinner class="size-4" />
@@ -1080,7 +1056,7 @@
                   <Button
                     onclick={() => saveNotification(index)}
                     disabled={testingIndex !== null || saving}
-                    class="cursor-pointer gap-2"
+                    class="gap-2"
                   >
                     {#if saving}
                       <Spinner class="size-4" />

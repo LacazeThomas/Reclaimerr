@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { HISTORY_PROVIDER_LABELS } from "./types";
   import type { Component } from "svelte";
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
@@ -75,6 +76,13 @@
           {label} &middot; {server.config.baseUrl}
         </p>
         <p class="text-xs text-muted-foreground">
+          History: {server.config.historySource?.error ??
+            HISTORY_PROVIDER_LABELS[
+              server.config.historySource?.provider ?? ""
+            ] ??
+            "not configured"}
+        </p>
+        <p class="text-xs text-muted-foreground">
           Last sync: {server.lastSyncedAt
             ? formatDistanceToNow(server.lastSyncedAt)
             : "never"}
@@ -87,7 +95,7 @@
         <Button
           size="sm"
           variant="outline"
-          class="cursor-pointer gap-2"
+          class="gap-2"
           disabled={busy || server.syncing}
           title="Make this the source of library and media data"
           onclick={onSetMain}
@@ -99,7 +107,7 @@
       <Button
         size="sm"
         variant="outline"
-        class="cursor-pointer gap-2"
+        class="gap-2"
         disabled={busy || server.syncing || !server.config.enabled}
         title={!server.config.enabled
           ? "Enable this server to sync it"
@@ -118,7 +126,7 @@
       <Button
         size="sm"
         variant="outline"
-        class="cursor-pointer gap-2"
+        class="gap-2"
         disabled={busy}
         onclick={onEdit}
       >
@@ -128,7 +136,7 @@
       {#if !isMain}
         <Button
           size="sm"
-          class="cursor-pointer gap-2 bg-destructive/80 hover:bg-destructive text-destructive-foreground"
+          class="gap-2 bg-destructive/80 hover:bg-destructive text-destructive-foreground"
           disabled={busy || server.syncing}
           onclick={onDelete}
         >

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { HISTORY_PROVIDER_LABELS } from "./types";
   import type { Component } from "svelte";
   import { post_api } from "$lib/api";
   import { Button } from "$lib/components/ui/button/index.js";
@@ -53,6 +54,7 @@
   let baseUrl = $state("");
   let apiKey = $state("");
   let enabled = $state(true);
+  let historyProvider = $state("automatic");
   let apiKeyIsSet = $state(false);
   let testStatus = $state<"idle" | "loading" | "success" | "error">("idle");
   let testing = $state(false);
@@ -87,6 +89,9 @@
       name = existing ? existing.config.name : suggestedName;
       baseUrl = existing ? existing.config.baseUrl : "";
       enabled = existing ? existing.config.enabled : true;
+      historyProvider =
+        existing?.config.extraSettings?.playback_history_provider ??
+        "automatic";
       apiKeyIsSet = existing ? existing.apiKeyIsSet : false;
       apiKey = "";
       testStatus = "idle";
@@ -133,6 +138,7 @@
           enabled: effectiveEnabled,
           base_url: baseUrl.trim(),
           is_main: willBeMain,
+          extra_settings: { playback_history_provider: historyProvider },
           ...(apiKey.trim() ? { api_key: apiKey.trim() } : {}),
         },
       );
@@ -235,6 +241,37 @@
         />
       </div>
 
+      <div class="space-y-2">
+        <Label for="history-provider">Playback history provider</Label>
+        <select
+          id="history-provider"
+          bind:value={historyProvider}
+          class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+        >
+          <option value="automatic">Automatic</option>
+          <option value="tracearr">Tracearr</option>
+          {#if serverKey === "plex"}
+            <option value="tautulli">Tautulli</option>
+          {:else}
+            <option value="playback_reporting">Playback Reporting</option>
+          {/if}
+        </select>
+        <p class="text-xs text-muted-foreground">
+          Automatic prefers a configured Tracearr binding, otherwise
+          {serverKey === "plex" ? "Tautulli" : "Playback Reporting"}. A failed
+          or empty source never switches providers.
+        </p>
+        {#if existing?.config.historySource && historyProvider === (existing.config.extraSettings?.playback_history_provider ?? "automatic")}
+          <p class="text-xs text-muted-foreground">
+            {existing.config.historySource.error ??
+              "Selected source: " +
+                (HISTORY_PROVIDER_LABELS[
+                  existing.config.historySource.provider ?? ""
+                ] ?? "none")}
+          </p>
+        {/if}
+      </div>
+
       <div class="flex items-center justify-between rounded-md border p-3">
         <div class="pr-3">
           <p class="text-sm font-medium">Enabled</p>
@@ -245,7 +282,6 @@
           </p>
         </div>
         <Switch
-          class="cursor-pointer"
           checked={effectiveEnabled}
           disabled={willBeMain}
           onCheckedChange={(checked) => (enabled = checked)}
@@ -265,22 +301,16 @@
         onclick={testConnection}
         disabled={testing || saving || !baseUrl.trim()}
         status={testStatus}
-        class="cursor-pointer gap-2 sm:mr-auto"
+        class="gap-2 sm:mr-auto"
         size="sm">Test</TestButton
       >
       <Button
         variant="outline"
         size="sm"
-        class="cursor-pointer"
         disabled={saving}
         onclick={() => (open = false)}>Cancel</Button
       >
-      <Button
-        size="sm"
-        class="cursor-pointer gap-2"
-        disabled={!canSave}
-        onclick={save}
-      >
+      <Button size="sm" class="gap-2" disabled={!canSave} onclick={save}>
         {#if saving}
           <Spinner class="size-4" />
           Saving...

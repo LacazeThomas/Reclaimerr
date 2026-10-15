@@ -1,5 +1,12 @@
 /** @type {Record<string, string[]>} */
 const PROVIDER_ALIASES = {
+  playback_history: [
+    "tracearr",
+    "tautulli",
+    "playback reporting",
+    "selected provider",
+    "history",
+  ],
   seerr: ["overseerr", "jellyseerr", "request", "requests"],
   rottentomatoes: [
     "rotten tomatoes",

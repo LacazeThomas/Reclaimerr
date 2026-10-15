@@ -522,17 +522,13 @@
               <div class="flex flex-wrap gap-3">
                 {#if canManageRequests && selectedRequest.status === ProtectionRequestStatus.Pending}
                   <!-- approve delete request -->
-                  <Button
-                    class="cursor-pointer"
-                    onclick={() => openApprove(selectedRequest)}
-                  >
+                  <Button onclick={() => openApprove(selectedRequest)}>
                     <CheckCircle class="size-4" /> Approve
                   </Button>
 
                   <!-- deny delete request -->
                   <Button
                     variant="secondary"
-                    class="cursor-pointer"
                     onclick={() => openDeny(selectedRequest)}
                   >
                     <XCircle class="size-4" /> Deny
@@ -543,7 +539,6 @@
                 {#if selectedRequest.status === ProtectionRequestStatus.Pending && selectedRequest.requested_by_user_id === $auth.user?.id}
                   <Button
                     variant="destructive"
-                    class="cursor-pointer"
                     onclick={() => openCancel(selectedRequest)}
                   >
                     <Trash2 class="size-4" /> Cancel Request
@@ -616,16 +611,10 @@
       />
     </div>
     <Dialog.Footer>
-      <Button
-        variant="secondary"
-        onclick={() => (denyDialogOpen = false)}
-        class="cursor-pointer">Cancel</Button
+      <Button variant="secondary" onclick={() => (denyDialogOpen = false)}
+        >Cancel</Button
       >
-      <Button
-        onclick={submitDeny}
-        disabled={denySubmitting}
-        class="cursor-pointer"
-      >
+      <Button onclick={submitDeny} disabled={denySubmitting}>
         {denySubmitting ? "Denying..." : "Deny"}
       </Button>
     </Dialog.Footer>
@@ -646,16 +635,13 @@
       </Dialog.Description>
     </Dialog.Header>
     <Dialog.Footer>
-      <Button
-        variant="secondary"
-        onclick={() => (cancelDialogOpen = false)}
-        class="cursor-pointer">Keep</Button
+      <Button variant="secondary" onclick={() => (cancelDialogOpen = false)}
+        >Keep</Button
       >
       <Button
         variant="destructive"
         onclick={submitCancel}
         disabled={cancelSubmitting}
-        class="cursor-pointer"
       >
         {cancelSubmitting ? "Cancelling..." : "Cancel Request"}
       </Button>

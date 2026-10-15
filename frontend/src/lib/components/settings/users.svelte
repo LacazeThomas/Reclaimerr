@@ -3,6 +3,7 @@
   import type { Component } from "svelte";
   import { auth } from "$lib/stores/auth";
   import { get_api, post_api, delete_api } from "$lib/api";
+  import UserImportDialog from "./user-import-dialog.svelte";
   import ErrorBox from "$lib/components/error-box.svelte";
   import {
     type MediaIdentityItem,
@@ -32,6 +33,7 @@
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import Link2 from "@lucide/svelte/icons/link-2";
   import X from "@lucide/svelte/icons/x";
+  import Search from "@lucide/svelte/icons/search";
 
   interface Props {
     svgIcon: Component | null;
@@ -39,6 +41,27 @@
   let { svgIcon }: Props = $props();
 
   let users: User[] = $state([]);
+  let userSearch = $state("");
+  let roleFilter = $state<"all" | UserRole>("all");
+  const hasUserFilters = $derived(
+    userSearch.length > 0 || roleFilter !== "all",
+  );
+  const filteredUsers = $derived.by(() => {
+    const query = userSearch.trim().toLowerCase();
+    return users.filter((user) => {
+      if (roleFilter !== "all" && user.role !== roleFilter) return false;
+      return (
+        !query ||
+        [user.username, user.display_name, user.email].some((value) =>
+          (value ?? "").toLowerCase().includes(query),
+        )
+      );
+    });
+  });
+  const clearUserFilters = () => {
+    userSearch = "";
+    roleFilter = "all";
+  };
   let mediaIdentities: MediaIdentityItem[] = $state([]);
   let mediaIdentitiesLoading = $state(false);
   let mediaIdentitiesError = $state("");
@@ -67,6 +90,7 @@
 
   let loading: boolean = $state(true);
   let profileError: string = $state("");
+  let showImportModal = $state(false);
   let showCreateModal: boolean = $state(false);
   let showEditModal: boolean = $state(false);
   let editingUser: User | null = $state(null);
@@ -445,15 +469,70 @@
     </p>
   </div>
   {#if !profileError && canManageUsers}
-    <Button
-      type="button"
-      class="hover cursor-pointer"
-      onclick={() => (showCreateModal = true)}><UserPlus /> Add User</Button
-    >
+    <div class="flex flex-wrap gap-2">
+      <Button
+        type="button"
+        variant="secondary"
+        onclick={() => (showImportModal = true)}>Import CSV</Button
+      >
+      <Button
+        type="button"
+        class="hover "
+        onclick={() => (showCreateModal = true)}><UserPlus /> Add User</Button
+      >
+    </div>
   {/if}
 </div>
 
 <ErrorBox error={profileError} />
+
+<div class="mb-3 flex flex-wrap items-center gap-2">
+  <div class="relative w-full sm:w-auto sm:min-w-64 sm:flex-1">
+    <Search
+      class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+      aria-hidden="true"
+    />
+    <Input
+      type="search"
+      bind:value={userSearch}
+      placeholder="Search username, display name, or email…"
+      aria-label="Search users by username, display name, or email"
+      class="pl-9 bg-card"
+    />
+  </div>
+  <Select.Root type="single" bind:value={roleFilter}>
+    <Select.Trigger
+      class="w-36 bg-card text-card-foreground "
+      aria-label="Filter users by role"
+    >
+      {roleFilter === UserRole.Admin
+        ? "Admins"
+        : roleFilter === UserRole.User
+          ? "Users"
+          : "All roles"}
+    </Select.Trigger>
+    <Select.Content class="bg-card">
+      <Select.Item value="all" label="All roles">All roles</Select.Item>
+      <Select.Item value={UserRole.Admin} label="Admins">Admins</Select.Item>
+      <Select.Item value={UserRole.User} label="Users">Users</Select.Item>
+    </Select.Content>
+  </Select.Root>
+  {#if hasUserFilters}
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      onclick={clearUserFilters}
+    >
+      Clear filters
+    </Button>
+  {/if}
+</div>
+{#if !loading && !profileError && users.length > 0}
+  <p class="mb-3 text-sm text-muted-foreground" role="status">
+    Showing {filteredUsers.length} of {users.length} users
+  </p>
+{/if}
 
 <!-- users table -->
 <div class="bg-card rounded-lg border border-border overflow-x-auto">
@@ -467,6 +546,11 @@
   {:else if users.length === 0}
     <div class="p-8 text-center text-muted-foreground">
       No users found. Create your first user to get started.
+    </div>
+  {:else if filteredUsers.length === 0}
+    <div class="p-8 text-center text-muted-foreground">
+      No users match your search and filters. Clear the filters or try a
+      different search.
     </div>
   {:else}
     <table class="w-full">
@@ -495,7 +579,7 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-border">
-        {#each users as user (user.id)}
+        {#each filteredUsers as user (user.id)}
           <tr class="hover:bg-muted/30 transition-colors">
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex items-center gap-3">
@@ -562,21 +646,42 @@
                   <Button
                     type="button"
                     size="icon"
-                    class="rounded-full cursor-pointer"
+                    class="rounded-full "
+                    title={`Edit user ${user.username}`}
+                    aria-label={`Edit user ${user.username}`}
                     onclick={() => openEditModal(user)}><UserPen /></Button
                   >
                 {/if}
                 <!-- delete -->
                 {#if canManageUsers}
-                  <Button
-                    type="button"
-                    size="icon"
-                    class="rounded-full hover:bg-destructive-secondary bg-destructive 
-                    text-destructive-foreground disabled:bg-muted disabled:text-muted-foreground 
-                    disabled:cursor-not-allowed cursor-pointer"
-                    onclick={() => openDeleteDialog(user)}
-                    disabled={user.id === $auth.user?.id}><UserX /></Button
+                  <span
+                    class="inline-flex"
+                    title={user.id === $auth.user?.id
+                      ? "You cannot delete your own account."
+                      : `Delete user ${user.username}`}
                   >
+                    <Button
+                      type="button"
+                      size="icon"
+                      class="rounded-full hover:bg-destructive-secondary bg-destructive
+                    text-destructive-foreground disabled:bg-muted disabled:text-muted-foreground 
+                    disabled:cursor-not-allowed "
+                      title={user.id === $auth.user?.id
+                        ? "You cannot delete your own account."
+                        : `Delete user ${user.username}`}
+                      aria-label={`Delete user ${user.username}`}
+                      aria-describedby={user.id === $auth.user?.id
+                        ? `self-delete-help-${user.id}`
+                        : undefined}
+                      onclick={() => openDeleteDialog(user)}
+                      disabled={user.id === $auth.user?.id}><UserX /></Button
+                    >
+                  </span>
+                  {#if user.id === $auth.user?.id}
+                    <span id={`self-delete-help-${user.id}`} class="sr-only"
+                      >You cannot delete your own account.</span
+                    >
+                  {/if}
                 {/if}
               </div>
             </td>
@@ -610,7 +715,6 @@
       <Button
         type="button"
         size="sm"
-        class="cursor-pointer"
         disabled={mediaIdentitiesLoading}
         onclick={() => loadMediaIdentities()}
       >
@@ -726,7 +830,6 @@
                     type="button"
                     size="sm"
                     variant="secondary"
-                    class="cursor-pointer"
                     disabled={isIdentityBusy(identity.id)}
                     onclick={() => unlinkIdentity(identity)}
                   >
@@ -737,7 +840,6 @@
                   <Button
                     type="button"
                     size="sm"
-                    class="cursor-pointer"
                     disabled={isIdentityBusy(identity.id) ||
                       !linkTargets[identity.id]}
                     onclick={() => linkIdentity(identity)}
@@ -858,7 +960,7 @@
                 class="flex items-start gap-2 text-sm text-foreground {canEditPermission(
                   option.value,
                 )
-                  ? 'cursor-pointer'
+                  ? ''
                   : 'opacity-50 cursor-not-allowed'}"
               >
                 <Checkbox
@@ -888,9 +990,7 @@
               id="new_page_access_container"
               class="space-y-3 rounded-lg border border-border p-3"
             >
-              <Label
-                class="flex items-start gap-2 text-sm text-foreground cursor-pointer"
-              >
+              <Label class="flex items-start gap-2 text-sm text-foreground ">
                 <Checkbox
                   checked={newUser.use_default_page_access}
                   onCheckedChange={(checked) =>
@@ -905,9 +1005,7 @@
                 </span>
               </Label>
               {#if !newUser.use_default_page_access}
-                <Label
-                  class="flex items-start gap-2 text-sm text-foreground cursor-pointer"
-                >
+                <Label class="flex items-start gap-2 text-sm text-foreground ">
                   <Checkbox
                     checked={newUser.allowed_pages === null}
                     onCheckedChange={(checked) =>
@@ -924,7 +1022,7 @@
                   <div class="grid gap-2 sm:grid-cols-2">
                     {#each PAGE_ACCESS_OPTIONS as option}
                       <Label
-                        class="flex items-start gap-2 rounded-md border border-border p-2 text-sm text-foreground cursor-pointer"
+                        class="flex items-start gap-2 rounded-md border border-border p-2 text-sm text-foreground "
                       >
                         <Checkbox
                           checked={newUser.allowed_pages.includes(option.value)}
@@ -956,13 +1054,11 @@
         <div class="flex justify-between gap-3 pt-4">
           <Button
             type="button"
-            class="flex-1 hover cursor-pointer"
+            class="flex-1 hover "
             onclick={closeModal}
             variant="secondary">Cancel</Button
           >
-          <Button type="submit" class="flex-1 hover cursor-pointer"
-            >Save Changes</Button
-          >
+          <Button type="submit" class="flex-1 hover ">Save Changes</Button>
         </div>
       </form>
     </Dialog.Content>
@@ -1059,7 +1155,7 @@
                 class="flex items-start gap-2 text-sm text-foreground {canEditPermission(
                   option.value,
                 )
-                  ? 'cursor-pointer'
+                  ? ''
                   : 'opacity-50 cursor-not-allowed'}"
               >
                 <Checkbox
@@ -1088,9 +1184,7 @@
               id="edit_page_access_container"
               class="space-y-3 rounded-lg border border-border p-3"
             >
-              <Label
-                class="flex items-start gap-2 text-sm text-foreground cursor-pointer"
-              >
+              <Label class="flex items-start gap-2 text-sm text-foreground ">
                 <Checkbox
                   checked={editUser.allowed_pages === null}
                   onCheckedChange={(checked) =>
@@ -1107,7 +1201,7 @@
                 <div class="grid gap-2 sm:grid-cols-2">
                   {#each PAGE_ACCESS_OPTIONS as option}
                     <Label
-                      class="flex items-start gap-2 rounded-md border border-border p-2 text-sm text-foreground cursor-pointer"
+                      class="flex items-start gap-2 rounded-md border border-border p-2 text-sm text-foreground "
                     >
                       <Checkbox
                         checked={editUser.allowed_pages.includes(option.value)}
@@ -1150,13 +1244,11 @@
         <div class="flex justify-between gap-3 pt-4">
           <Button
             type="button"
-            class="flex-1 hover cursor-pointer"
+            class="flex-1 hover "
             onclick={closeEditModal}
             variant="secondary">Cancel</Button
           >
-          <Button type="submit" class="flex-1 hover cursor-pointer"
-            >Save Changes</Button
-          >
+          <Button type="submit" class="flex-1 hover ">Save Changes</Button>
         </div>
       </form>
     </Dialog.Content>
@@ -1182,14 +1274,23 @@
     </AlertDialog.Header>
     <AlertDialog.Footer class="flex justify-end gap-3 pt-4">
       <AlertDialog.Cancel
-        class="cursor-pointer hover text-foreground bg-secondary"
+        class="hover text-foreground bg-secondary"
         onclick={closeDeleteDialog}
       >
         Cancel
       </AlertDialog.Cancel>
-      <AlertDialog.Action class="cursor-pointer hover" onclick={confirmDelete}>
+      <AlertDialog.Action class="hover" onclick={confirmDelete}>
         Delete
       </AlertDialog.Action>
     </AlertDialog.Footer>
   </AlertDialog.Content>
 </AlertDialog.Root>
+
+{#if showImportModal && canManageUsers}
+  <UserImportDialog
+    bind:open={showImportModal}
+    onImported={async () => {
+      await Promise.all([loadUsers(), loadMediaIdentities()]);
+    }}
+  />
+{/if}

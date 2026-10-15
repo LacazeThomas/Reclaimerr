@@ -665,14 +665,14 @@
             <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
               <button
                 type="button"
-                class="cursor-pointer text-primary underline underline-offset-2"
+                class="text-primary underline underline-offset-2"
                 onclick={reopenAuthPopup}
               >
                 Don't see the sign-in window? Open it again
               </button>
               <button
                 type="button"
-                class="cursor-pointer text-muted-foreground underline underline-offset-2"
+                class="text-muted-foreground underline underline-offset-2"
                 onclick={cancelRedirectAuth}
               >
                 Cancel
@@ -726,7 +726,7 @@
               {#if visibleMethods.includes("local")}
                 <button
                   type="button"
-                  class="flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm cursor-pointer
+                  class="flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm
                   {loginMethod === 'local'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground'}"
@@ -742,7 +742,7 @@
               {#if visibleMethods.includes("media")}
                 <button
                   type="button"
-                  class="flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm cursor-pointer
+                  class="flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm
                   {loginMethod === 'media'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground'}"
@@ -769,7 +769,7 @@
               {#if visibleMethods.includes("sso")}
                 <button
                   type="button"
-                  class="flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm cursor-pointer
+                  class="flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm
                   {loginMethod === 'sso'
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground'}"
@@ -831,7 +831,7 @@
                 size="lg"
                 class="flex justify-center w-full py-2 px-4 bg-primary hover:bg-primary-hover
                 font-medium rounded-md transition-colors focus:ring-2 focus:ring-focus-ring
-                cursor-pointer"
+                "
               >
                 {#if loginHovered}
                   <DoorOpen class="size-6" />
@@ -913,7 +913,7 @@
                 size="lg"
                 class="flex justify-center w-full py-2 px-4 bg-primary hover:bg-primary-hover
                 font-medium rounded-md transition-colors focus:ring-2 focus:ring-focus-ring
-                cursor-pointer"
+                "
               >
                 <Server class="size-5" />
                 <span class="font-medium">
@@ -935,7 +935,7 @@
               onmouseenter={() => (oidcHovered = true)}
               onmouseleave={() => (oidcHovered = false)}
               size="lg"
-              class="flex justify-center w-full py-2 px-4 font-medium cursor-pointer
+              class="flex justify-center w-full py-2 px-4 font-medium
               bg-primary hover:bg-primary-hover transition-colors h-auto min-h-10"
               onclick={startOidcLogin}
             >

@@ -11,10 +11,14 @@ Rules determine which media becomes a reclaim candidate or receives an automated
 
 Use rule preview before saving or running a cleanup scan. Preview shows the items that match and the actual values used for each matching condition.
 
+Use the search box on **Rules** to find names or descriptions, ignoring case. Combine it with status, scope, and outcome filters to narrow the list. The count shows how many rules match; **Clear filters** resets the search and all filters. These controls only change the displayed list; **Export All** still exports every rule.
+
+The rule editor warns before you discard unsaved changes through its Back button or navigation to another app page. Refreshing or closing the tab uses the browser’s own warning. Cancel the warning to keep editing. Opening a preview does not mark a rule as changed.
+
 ## Start from a preset
 
 1. Open **Rules → Add from preset** and choose a starter.
-2. Select the applicable libraries. Favorites protection offers a Movies/Whole shows choice; save separate rules to cover both. Fully watched seasons and finished ended shows require selected users and enabled Sonarr; watched requests requires enabled Seerr.
+2. Select the applicable libraries. Favorites, recent-import, and recent-playback protection offer a Movies/Whole shows choice; save separate rules to cover both. Fully watched seasons and finished ended shows require selected users and enabled Sonarr; watched requests requires enabled Seerr.
 3. Choose **Open in editor**, adjust the conditions and action, and use **Preview Matches**.
 4. Save the rule. It starts disabled, with automatic deletion, moves, and Arr tagging off unless you explicitly change those settings.
 
@@ -25,6 +29,9 @@ Use rule preview before saving or running a cleanup scan. Preview shows the item
 | Fully watched seasons | Every selected user completed the regular season; last recorded playback activity across all users was more than 30 days ago |
 | Keep the newest two seasons | Regular seasons with at least two newer known regular seasons, ordered by season number |
 | Large movies for review | Imported movie file size greater than 40 GiB |
+| Protect recent imports | Current movie copies or whole shows added less than 30 days ago; whole shows use the show's added date, not the latest episode import |
+| Disk-pressure cleanup | Current movie copies added more than 180 days ago with no recorded viewing, on a disk with less than 10% free space |
+| Protect recent playback | Current movie copies or whole shows with recorded playback activity less than 14 days ago, including unfinished viewing |
 | Protect favorites and watchlists | Protect movies or whole shows favorited/watchlisted by any user in the imported data |
 | Finished, ended shows | Sonarr status is ended; every selected user completed all regular seasons; last playback activity across all users was more than 90 days ago |
 | Requested movies already watched | An active request exists; at least one requester completed the movie; last playback activity across all users was more than 30 days ago |
@@ -40,6 +47,8 @@ Finished ended shows uses Sonarr's full regular-episode inventory for completion
 Watched requests uses **Seerr requester has watched**: one requester's completion is enough, and it need not occur after the request. Other requesters may still be waiting to watch. Configure requester/watch-user identities under **Settings → User Signals** and preview before enabling. Unknown request, completion, or activity does not match.
 
 Saved rules are independent copies. Edit and import/export them normally; future bundled preset updates never overwrite them.
+
+Recent-import protection uses the target's added date. New episodes do not restart a whole show's 30-day window. Recent-playback protection requires dated Tautulli or Tracearr history and follows the configured minimum playback duration. Unknown added dates or activity do not match these presets. Disk-pressure cleanup requires resolvable disk statistics from local storage or Arr mounts/path mappings; unknown disk space does not match. Preview the file-to-disk mapping before enabling it.
 
 ## Rule Outcomes
 
@@ -67,6 +76,8 @@ A cleanup-candidate rule chooses what its Radarr or Sonarr instance does once th
 | Delete | The Arr entry and its files are removed |
 | Unmonitor + Delete File | Files are deleted, the Arr entry stays as unmonitored |
 | Unmonitor + Delete Files + Monitor New Seasons (only if latest season deleted) | Sonarr season rules only: unmonitor and remove the season, retaining the show; enable series and new-season monitoring when the latest known regular season is removed |
+| Unmonitor + Delete Files + Add List Exclusion | Radarr movie rules: keep the unmonitored movie entry and add an import list exclusion after file removal. Sonarr season rules: exclude only when the show has ended and the latest regular season was removed |
+| Unmonitor + Delete Files + Monitor New Seasons OR Add List Exclusion | Sonarr season rules: exclude an ended show when its latest regular season is removed; otherwise enable series and new-season monitoring when the latest regular season is removed |
 | Unmonitor Only (Keep File) | The Arr entry is unmonitored and nothing is deleted |
 | Change Quality Profile | Nothing is removed. The Arr entry moves onto a different quality profile, optionally with a search queued |
 
@@ -80,7 +91,9 @@ The conditional Sonarr action counts the highest known regular season, including
 
 This action requires a reachable Sonarr instance and successful season unmonitoring before files are removed. If removal succeeds but enabling new-season monitoring fails, History shows a warning with Sonarr details. The completed removal is not retried; enable monitoring in Sonarr to resolve the warning. Whole-series and episode rules do not offer this action.
 
-If several matched rules disagree, the most conservative action wins: Change Quality Profile, then Unmonitor Only, then Unmonitor, then the conditional Monitor New Seasons action, then Delete. Ordinary Unmonitor takes precedence so another matched rule cannot unexpectedly enable monitoring.
+The exclusion actions keep the Arr entry and work with Move Instead of Delete. They add exclusions independently of the global **Add Arr Import List Exclusions on Delete** setting. Sonarr checks the live status and latest known regular season after removal; announced seasons count and specials do not. In the combined action, the ended-show exclusion branch wins and leaves the series unmonitored. Older seasons receive neither follow-up action. History records exclusion success, skipped safety checks, or failure. A failed exclusion does not trigger monitoring or repeat the file removal.
+
+If several matched rules disagree, the most conservative action wins: Change Quality Profile, then Unmonitor Only, then Unmonitor, then the conditional Monitor New Seasons action, then the combined Monitor New Seasons OR Add List Exclusion action, then Add List Exclusion, then Delete. Ordinary Unmonitor takes precedence so another matched rule cannot unexpectedly enable monitoring.
 
 Cleanup-candidate rules can target one or more Radarr or Sonarr instances. Reclaimerr applies the rule's managed tag to every selected instance where the item exists and limits ARR deletion or unmonitor actions to those selections. For movie versions, the synchronized Radarr movie folder must match the media-server file path before an explicitly selected instance is used. Configure instance-scoped Path Mappings in General Settings when the services report different container path prefixes. Leaving every instance unselected preserves automatic path-based routing across all matching active instances.
 
@@ -576,3 +589,15 @@ Rules other users have shared are on [Community Rules](../community-rules/index.
 - [Rule Format](../reference/rule-format.md)
 - [Rule Fields](../reference/rule-fields.md)
 - [Community Rules](../community-rules/index.md)
+
+## Selected-provider playback history
+
+Choose **Playback history - selected provider** in the rule node editor to use only recorded history from the provider selected for each media server. In **Settings → Media Servers**, edit a server and choose Automatic, Tracearr, or Tautulli (Plex), or Playback Reporting (Jellyfin/Emby). Bind Tautulli to its Plex server in Tautulli settings.
+
+Automatic prefers an enabled Tracearr binding, otherwise the server's Tautulli or Playback Reporting integration. A failed provider or an empty history never causes a switch to another source. Different servers may use different providers.
+
+The new playback_history fields include all retained imported history, even watches before a file was replaced. They do not merge native server watch state or history from superseded providers. Existing Watch and Playback History conditions retain their calculated and merged behavior.
+
+Use **Days since recorded completed watch > 180** for an old completed watch. Use **Recorded completed watch is false** separately to match no recorded completed watches; a missing completion date does not match a numeric age. For TV series and seasons, completion dates refer to completed episode plays, not completion of the entire show.
+
+Unavailable, unsynced, or unmapped sources are unknown, rather than zero plays or proof that an item was never watched. Playback Reporting does not provide completion flags, so its completion conditions remain unavailable. Unknown completion flags also prevent proving that no completed watch exists or that a recorded completion is the latest one.

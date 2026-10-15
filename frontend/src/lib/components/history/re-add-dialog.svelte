@@ -187,7 +187,7 @@
               {/each}
             </select>
           </div>
-          <Label class="flex items-center gap-2 text-sm cursor-pointer">
+          <Label class="flex items-center gap-2 text-sm ">
             <Checkbox
               checked={search}
               onCheckedChange={(checked) => (search = checked === true)}

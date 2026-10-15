@@ -249,7 +249,7 @@
             variant="ghost"
             size="sm"
             onclick={() => (currentPathSelection = "")}
-            class="cursor-pointer h-7 px-2 gap-1 text-xs font-medium shrink-0"
+            class="h-7 px-2 gap-1 text-xs font-medium shrink-0"
             disabled={!currentPathSelection}
           >
             <FolderIcon class="size-3.5" />
@@ -264,7 +264,7 @@
               size="sm"
               onclick={() => (currentPathSelection = crumb.path)}
               disabled={i === breadcrumb.length - 1}
-              class="cursor-pointer h-7 px-2 text-xs font-mono min-h-4 truncate shrink-0"
+              class="h-7 px-2 text-xs font-mono min-h-4 truncate shrink-0"
               title={crumb.path}
             >
               {crumb.label}
@@ -278,7 +278,7 @@
                 variant="ghost"
                 size="sm"
                 onclick={navigateUp}
-                class="cursor-pointer h-7 px-2 gap-1 text-xs"
+                class="h-7 px-2 gap-1 text-xs"
               >
                 <ArrowLeft class="size-3.5" />
                 Up
@@ -304,7 +304,7 @@
           {:else}
             {#each currentChildren as node}
               <div
-                class="flex items-center justify-between gap-2 px-3 py-2 hover:bg-muted/50 cursor-pointer transition-colors"
+                class="flex items-center justify-between gap-2 px-3 py-2 hover:bg-muted/50 transition-colors"
                 role="button"
                 tabindex="0"
                 onclick={() => navigateInto(node)}
@@ -379,17 +379,12 @@
     <div
       class="shrink-0 border-t border-border px-6 py-3 flex items-center justify-end gap-2"
     >
-      <Button
-        type="button"
-        variant="secondary"
-        class="cursor-pointer"
-        onclick={() => (open = false)}
-      >
+      <Button type="button" variant="secondary" onclick={() => (open = false)}>
         Cancel
       </Button>
       <Button
         type="button"
-        class="cursor-pointer gap-1.5"
+        class="gap-1.5"
         onclick={addPattern}
         disabled={!currentPathSelection || !!pathSuffixError || validating}
       >

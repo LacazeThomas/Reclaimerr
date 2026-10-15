@@ -72,3 +72,16 @@ test("supports common Seerr product names as aliases", () => {
       0,
   );
 });
+
+test("finds selected-provider history through provider aliases", () => {
+  for (const provider of ["tracearr", "tautulli", "playback reporting"]) {
+    assert.ok(
+      score(
+        "playback_history.last_completed_at",
+        "Last recorded completed watch",
+        "Playback history - selected provider",
+        provider + " completed",
+      ) > 0.9,
+    );
+  }
+});

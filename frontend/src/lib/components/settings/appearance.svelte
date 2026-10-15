@@ -63,7 +63,7 @@
         type="button"
         aria-pressed={$themeFamily === preset.id}
         onclick={() => selectTheme(preset.id)}
-        class="group rounded-xl border p-4 text-left transition-all cursor-pointer outline-none focus-visible:ring-2
+        class="group rounded-xl border p-4 text-left transition-all outline-none focus-visible:ring-2
           focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background
           {$themeFamily === preset.id
           ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'
@@ -139,7 +139,7 @@
           aria-pressed={$dateFormat === option.value}
           onclick={() => selectDateFormat(option.value)}
           disabled={dateFormatSaving}
-          class="rounded-xl border p-4 text-left transition-all cursor-pointer outline-none focus-visible:ring-2
+          class="rounded-xl border p-4 text-left transition-all outline-none focus-visible:ring-2
             focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background
             {$dateFormat === option.value
             ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10'

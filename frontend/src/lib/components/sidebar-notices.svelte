@@ -59,7 +59,7 @@
   <button
     type="button"
     class="relative inline-flex items-center justify-center rounded-md p-1
-      hover:bg-accent hover:text-accent-foreground cursor-pointer"
+      hover:bg-accent hover:text-accent-foreground"
     aria-label="Open notices"
     title={unreadCount > 0 ? `${unreadCount} unread notice(s)` : "Notices"}
     onclick={() => (noticesDialogOpen = true)}
@@ -129,7 +129,7 @@
                 {/if}
                 <button
                   type="button"
-                  class="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                  class="text-xs text-muted-foreground hover:text-foreground"
                   onclick={() => markReadState(notice, !notice.is_read)}
                 >
                   {notice.is_read ? "Mark unread" : "Mark read"}

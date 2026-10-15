@@ -166,7 +166,7 @@
               <li class="flex items-center gap-3 px-3 py-2">
                 <input
                   type="checkbox"
-                  class="size-4 cursor-pointer"
+                  class="size-4"
                   checked={isSelected(item.name)}
                   oninput={() => toggleSelected(item.name)}
                 />
@@ -191,7 +191,6 @@
           <Button
             type="button"
             variant="secondary"
-            class="cursor-pointer"
             disabled={loadingMore}
             onclick={loadMore}
           >
@@ -202,12 +201,8 @@
     </div>
 
     <Dialog.Footer class="px-6 py-4 shrink-0 border-t border-border mt-auto">
-      <Button
-        variant="secondary"
-        class="cursor-pointer"
-        onclick={() => (open = false)}>Cancel</Button
-      >
-      <Button class="cursor-pointer" onclick={applySelection}>Apply</Button>
+      <Button variant="secondary" onclick={() => (open = false)}>Cancel</Button>
+      <Button onclick={applySelection}>Apply</Button>
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>

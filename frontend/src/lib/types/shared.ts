@@ -647,6 +647,8 @@ export interface RuleAction {
     | "delete"
     | "unmonitor"
     | "unmonitor_delete_monitor_new_seasons"
+    | "unmonitor_delete_list_exclusion"
+    | "unmonitor_delete_monitor_or_exclude"
     | "unmonitor_only"
     | "change_quality_profile";
   media_server_action: "delete" | null;
@@ -1391,6 +1393,7 @@ export interface ReclaimCandidateEntry {
       actual: string | number | boolean | (string | number | boolean)[] | null;
       details: string[];
       display: string;
+      history_sources?: { server: string; provider: string }[];
     }[];
     text: string;
   }[];
@@ -1549,6 +1552,8 @@ export interface ReclaimHistoryEntry {
     dolby_vision: boolean | null;
     sonarr_monitor_new_seasons?: "enabled" | "skipped" | "failed" | null;
     sonarr_monitor_new_seasons_error?: string | null;
+    arr_list_exclusion?: "added" | "skipped" | "failed" | null;
+    arr_list_exclusion_error?: string | null;
   } | null;
   action: string;
   destination_path: string | null;

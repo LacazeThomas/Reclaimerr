@@ -219,8 +219,7 @@
           {/if}
           <div class="flex rounded-md border border-border overflow-hidden">
             <button
-              class="px-3 py-1 text-xs transition-colors cursor-pointer {view ===
-              'month'
+              class="px-3 py-1 text-xs transition-colors {view === 'month'
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-transparent text-muted-foreground hover:bg-secondary'}"
               onclick={() => setView("month")}
@@ -228,8 +227,7 @@
               Month
             </button>
             <button
-              class="px-3 py-1 text-xs transition-colors cursor-pointer {view ===
-              'week'
+              class="px-3 py-1 text-xs transition-colors {view === 'week'
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-transparent text-muted-foreground hover:bg-secondary'}"
               onclick={() => setView("week")}
@@ -260,7 +258,7 @@
             class="min-h-20 md:min-h-24 border-b border-r border-border p-1.5 text-left align-top transition-colors
               last:border-r-0 disabled:cursor-default
               {outside ? 'opacity-40' : ''}
-              {day ? 'cursor-pointer hover:bg-secondary/60' : ''}
+              {day ? 'hover:bg-secondary/60' : ''}
               {selectedKey === key ? 'bg-secondary' : ''}"
             disabled={!day}
             onclick={() => select(key)}

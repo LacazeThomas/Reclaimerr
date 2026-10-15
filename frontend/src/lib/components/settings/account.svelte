@@ -359,12 +359,12 @@
             </Avatar.Root>
           {/if}
           <!-- edit avatar icon button -->
-          <label class="absolute bottom-2 right-2 cursor-pointer">
+          <label class="absolute bottom-2 right-2">
             <Button
               size="icon-sm"
               type="button"
               variant="secondary"
-              class="cursor-pointer bg-secondary/75 hover:bg-secondary/90"
+              class="bg-secondary/75 hover:bg-secondary/90"
               disabled={avatarInputState === AVATAR_UPLOADING}
               onclick={() =>
                 avatarInputState === AVATAR_SAVE
@@ -475,7 +475,7 @@
           <Button
             type="submit"
             size="icon"
-            class="hover cursor-pointer"
+            class="hover "
             disabled={profileUpdating}
           >
             {#if profileUpdating}
@@ -575,7 +575,7 @@
           <Button
             type="submit"
             size="icon"
-            class="hover cursor-pointer"
+            class="hover "
             disabled={passwordUpdating}
           >
             {#if passwordUpdating}
@@ -601,7 +601,7 @@
           <!-- sign out of other sessions -->
           <Button
             size="sm"
-            class="cursor-pointer bg-destructive/70 hover:bg-destructive/80"
+            class="bg-destructive/70 hover:bg-destructive/80"
             disabled={revokingOtherSessions ||
               sessionsLoading ||
               sessions.filter((session) => !session.is_current).length === 0}
@@ -617,7 +617,6 @@
           <!-- refresh sessions -->
           <Button
             size="sm"
-            class="cursor-pointer"
             disabled={sessionsLoading}
             onclick={() => loadSessions()}
           >
@@ -662,7 +661,7 @@
                 </div>
                 <Button
                   size="sm"
-                  class="cursor-pointer bg-destructive/70 hover:bg-destructive/80"
+                  class="bg-destructive/70 hover:bg-destructive/80"
                   disabled={isSessionBeingRevoked(session.session_id)}
                   onclick={() => revokeSession(session.session_id)}
                 >

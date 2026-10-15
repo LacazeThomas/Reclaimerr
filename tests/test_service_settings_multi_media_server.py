@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock
 
+import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -35,6 +36,13 @@ from backend.enums import Service, UserRole
 from backend.models.settings import ServiceConfigUpdate
 
 
+@pytest.fixture(autouse=True)
+def isolate_playback_refresh_queue(monkeypatch):
+    # Saving a media-server history preference queues a refresh separately
+    # from its service-toggle job. Neither may reach the application's DB.
+    monkeypatch.setattr(services, "enqueue_task_run", AsyncMock(return_value=True))
+
+
 def _admin_user() -> User:
     return User(
         username="admin",
@@ -48,7 +56,9 @@ async def _make_session() -> tuple[async_sessionmaker[AsyncSession], object]:
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    session_maker = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    session_maker = async_sessionmaker(
+        engine, expire_on_commit=False, class_=AsyncSession
+    )
     return session_maker, engine
 
 
@@ -102,9 +112,13 @@ def test_creating_second_same_type_media_server_by_name_succeeds(monkeypatch):
             assert second["data"]["id"] != first["data"]["id"]
 
             rows = (
-                (await db.execute(select(ServiceConfig).where(
-                    ServiceConfig.service_type == Service.PLEX
-                )))
+                (
+                    await db.execute(
+                        select(ServiceConfig).where(
+                            ServiceConfig.service_type == Service.PLEX
+                        )
+                    )
+                )
                 .scalars()
                 .all()
             )
@@ -179,9 +193,13 @@ def test_omitted_api_key_on_new_same_type_instance_does_not_reuse_first_key(
             # and the second/query-level MultipleResultsFound must not occur
             # even after a successful first save.
             rows = (
-                (await db.execute(select(ServiceConfig).where(
-                    ServiceConfig.service_type == Service.PLEX
-                )))
+                (
+                    await db.execute(
+                        select(ServiceConfig).where(
+                            ServiceConfig.service_type == Service.PLEX
+                        )
+                    )
+                )
                 .scalars()
                 .all()
             )
@@ -311,7 +329,9 @@ def test_multiple_results_found_would_have_been_raised_pre_fix() -> None:
             except MultipleResultsFound:
                 pass
             else:
-                raise AssertionError("expected MultipleResultsFound from the old query shape")
+                raise AssertionError(
+                    "expected MultipleResultsFound from the old query shape"
+                )
         await engine.dispose()
 
     asyncio.run(run())

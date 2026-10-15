@@ -53,7 +53,7 @@
 <div class="flex items-center gap-1">
   <Button
     size="sm"
-    class="h-8 w-8 p-0 cursor-pointer border border-gray-400 bg-button-1 hover:bg-button-1-hover 
+    class="h-8 w-8 p-0 border border-gray-400 bg-button-1 hover:bg-button-1-hover
       text-button-1-foreground shadow"
     disabled={currentPage <= 1}
     onclick={() => goToPage(1)}
@@ -64,7 +64,7 @@
 
   <Button
     size="sm"
-    class="h-8 w-8 p-0 cursor-pointer border border-gray-400 bg-button-1 hover:bg-button-1-hover 
+    class="h-8 w-8 p-0 border border-gray-400 bg-button-1 hover:bg-button-1-hover
       text-button-1-foreground shadow"
     disabled={currentPage <= 1}
     onclick={() => goToPage(currentPage - 1)}
@@ -75,7 +75,7 @@
   {#each pageButtons as page (page)}
     <Button
       size="sm"
-      class="h-8 w-8 p-0 cursor-pointer border border-gray-400 shadow
+      class="h-8 w-8 p-0 border border-gray-400 shadow
         {page === currentPage
         ? 'bg-primary hover:bg-primary text-primary-foreground'
         : 'bg-button-1 hover:bg-button-1-hover text-button-1-foreground'}"
@@ -88,7 +88,7 @@
 
   <Button
     size="sm"
-    class="h-8 w-8 p-0 cursor-pointer border border-gray-400 bg-button-1 hover:bg-button-1-hover 
+    class="h-8 w-8 p-0 border border-gray-400 bg-button-1 hover:bg-button-1-hover
       text-button-1-foreground shadow"
     disabled={currentPage >= totalPages}
     onclick={() => goToPage(currentPage + 1)}
@@ -99,7 +99,7 @@
 
   <Button
     size="sm"
-    class="h-8 w-8 p-0 cursor-pointer border border-gray-400 bg-button-1 hover:bg-button-1-hover 
+    class="h-8 w-8 p-0 border border-gray-400 bg-button-1 hover:bg-button-1-hover
       text-button-1-foreground shadow"
     disabled={currentPage >= totalPages}
     onclick={() => goToPage(totalPages)}

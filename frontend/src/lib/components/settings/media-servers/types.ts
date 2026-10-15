@@ -8,6 +8,12 @@ export type MediaServerConfig = {
   enabled: boolean;
   baseUrl: string;
   isMain: boolean;
+  extraSettings: Record<string, any>;
+  historySource?: {
+    preference: string;
+    provider: string | null;
+    error: string | null;
+  };
 };
 
 // One saved media server row. Drafts never live here - a server only joins the
@@ -32,4 +38,10 @@ export type SaveServiceResponse = {
     base_url: string;
     is_main: boolean;
   };
+};
+
+export const HISTORY_PROVIDER_LABELS: Record<string, string> = {
+  tracearr: "Tracearr",
+  tautulli: "Tautulli",
+  playback_reporting: "Playback Reporting",
 };

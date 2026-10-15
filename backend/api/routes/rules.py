@@ -12,7 +12,10 @@ from backend.api.candidate_views import build_rule_preview_items
 from backend.core.auth import require_admin
 from backend.core.logger import LOG
 from backend.core.rule_actions import (
+    ARR_ACTION_LIST_EXCLUSION,
     ARR_ACTION_MONITOR_NEW_SEASONS,
+    ARR_ACTION_MONITOR_OR_EXCLUDE,
+    SEASON_FINALIZATION_ACTIONS,
     collect_seerr_config_ids,
     has_unqualified_seerr_requesters,
     normalize_arr_service_config_ids,
@@ -141,6 +144,8 @@ VALID_ARR_ACTIONS = frozenset(
         "unmonitor_only",
         ARR_ACTION_CHANGE_QUALITY_PROFILE,
         ARR_ACTION_MONITOR_NEW_SEASONS,
+        ARR_ACTION_LIST_EXCLUSION,
+        ARR_ACTION_MONITOR_OR_EXCLUDE,
     }
 )
 # A Sonarr quality profile belongs to the series, so a season or episode rule
@@ -221,9 +226,20 @@ def _normalize_rule_action(
             f"arr_action must be one of {', '.join(sorted(VALID_ARR_ACTIONS))}"
         )
     normalized["arr_action"] = arr_action
-    if arr_action == ARR_ACTION_MONITOR_NEW_SEASONS and target_scope != TARGET_SEASON:
+    if (
+        arr_action in SEASON_FINALIZATION_ACTIONS
+        and arr_action != ARR_ACTION_LIST_EXCLUSION
+        and target_scope != TARGET_SEASON
+    ):
         raise ValueError(
             "Monitoring new seasons after removal is only available on season rules"
+        )
+    if arr_action == ARR_ACTION_LIST_EXCLUSION and target_scope not in {
+        TARGET_MOVIE_VERSION,
+        TARGET_SEASON,
+    }:
+        raise ValueError(
+            "List exclusion after removal is only available on movie and season rules"
         )
     if arr_action == ARR_ACTION_CHANGE_QUALITY_PROFILE:
         if target_scope not in QUALITY_PROFILE_SCOPES:
@@ -1787,13 +1803,37 @@ async def delete_rule(
 async def check_synced_rules(
     _admin: Annotated[User, Depends(require_admin)],
     db: AsyncSession = Depends(get_db),
-) -> dict[str, int]:
-    """Return the count of synced libraries, movies, and series."""
+) -> dict[str, int | bool]:
+    """Report readiness from the enabled main server's completed sync."""
     lib_count = await db.scalar(select(func.count(ServiceMediaLibrary.id)))
     movie_count = await db.scalar(select(func.count(Movie.id)))
     series_count = await db.scalar(select(func.count(Series.id)))
+    main_server = await db.scalar(
+        select(ServiceConfig).where(
+            ServiceConfig.service_type.in_(
+                [Service.PLEX, Service.JELLYFIN, Service.EMBY]
+            ),
+            ServiceConfig.enabled.is_(True),
+            ServiceConfig.is_main.is_(True),
+        )
+    )
+    main_libraries = 0
+    if main_server is not None:
+        main_libraries = (
+            await db.scalar(
+                select(func.count(ServiceMediaLibrary.id)).where(
+                    ServiceMediaLibrary.service_config_id == main_server.id,
+                )
+            )
+            or 0
+        )
     return {
         "libraries": lib_count or 0,
         "movies": movie_count or 0,
         "series": series_count or 0,
+        "synced": bool(
+            main_server is not None
+            and main_server.last_synced_at is not None
+            and main_libraries
+        ),
     }

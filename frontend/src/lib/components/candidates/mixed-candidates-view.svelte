@@ -178,7 +178,7 @@
               checked={allSel}
               indeterminate={partSel}
               onchange={() => toggleGroupSelect(row)}
-              class="mt-1 cursor-pointer accent-primary"
+              class="mt-1 accent-primary"
             />
           {/if}
           <button
@@ -291,7 +291,7 @@
                     type="checkbox"
                     checked={selectedIds.has(version.id)}
                     onchange={() => toggleSelect(version.id)}
-                    class="mt-0.5 cursor-pointer accent-primary"
+                    class="mt-0.5 accent-primary"
                   />
                 {/if}
                 <div class="flex-1 space-y-2">
@@ -424,7 +424,7 @@
               checked={allSel}
               indeterminate={partSel}
               onchange={() => toggleGroupSelect(row)}
-              class="mt-1 cursor-pointer accent-primary"
+              class="mt-1 accent-primary"
             />
           {/if}
           <button
@@ -540,7 +540,7 @@
                       type="checkbox"
                       checked={selectedIds.has(season.id)}
                       onchange={() => toggleSelect(season.id)}
-                      class="mt-0.5 cursor-pointer accent-primary"
+                      class="mt-0.5 accent-primary"
                     />
                   {/if}
                   <div class="flex-1 space-y-2">
@@ -671,7 +671,7 @@
                             type="checkbox"
                             checked={selectedIds.has(ep.id)}
                             onchange={() => toggleSelect(ep.id)}
-                            class="mt-0.5 cursor-pointer accent-primary"
+                            class="mt-0.5 accent-primary"
                           />
                         {/if}
                         <div class="flex-1 space-y-2">

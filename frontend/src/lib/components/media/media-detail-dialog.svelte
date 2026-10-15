@@ -601,10 +601,7 @@
                   : 'grid-cols-1'}"
               >
                 {#if canRequestProtection}
-                  <Button
-                    class="cursor-pointer w-full"
-                    onclick={handleRequestException}
-                  >
+                  <Button class="w-full" onclick={handleRequestException}>
                     <Shield class="size-5" />
                     Protect
                   </Button>
@@ -612,7 +609,7 @@
                 {#if canRequestDelete}
                   <Button
                     variant="destructive"
-                    class="cursor-pointer w-full"
+                    class="w-full"
                     onclick={handleRequestDelete}
                   >
                     <Trash2 class="size-5" />
@@ -623,7 +620,7 @@
             {/if}
             <Button
               variant="secondary"
-              class="cursor-pointer w-full mt-2"
+              class="w-full mt-2"
               onclick={handleClose}
             >
               <X class="size-5" />
@@ -635,11 +632,7 @@
             class="hidden sm:flex mt-6 border-t border-border/60 pt-4"
           >
             <!-- close button -->
-            <Button
-              variant="secondary"
-              class="cursor-pointer"
-              onclick={handleClose}
-            >
+            <Button variant="secondary" onclick={handleClose}>
               <X class="size-5" />
               Close
             </Button>
@@ -648,9 +641,7 @@
             {#if canRequestProtection}
               <Tooltip.Root>
                 <Tooltip.Trigger>
-                  <Button
-                    class="cursor-pointer"
-                    onclick={handleRequestException}
+                  <Button onclick={handleRequestException}
                     ><Shield class="size-5" />Protect</Button
                   >
                 </Tooltip.Trigger>
@@ -664,10 +655,7 @@
             {#if canRequestDelete}
               <Tooltip.Root>
                 <Tooltip.Trigger>
-                  <Button
-                    variant="destructive"
-                    class="cursor-pointer"
-                    onclick={handleRequestDelete}
+                  <Button variant="destructive" onclick={handleRequestDelete}
                     ><Trash2 class="size-5" />Delete</Button
                   >
                 </Tooltip.Trigger>

@@ -774,7 +774,6 @@
           size="sm"
           onclick={toggleSelectAllPending}
           disabled={pendingInView.length === 0}
-          class="cursor-pointer"
         >
           {allPendingSelected
             ? "Clear Pending Selection"
@@ -790,7 +789,7 @@
             onclick={openBulkApprove}
             disabled={selectedPendingIds.length === 0}
             class="gap-1.5 text-green-600 border-green-600 hover:bg-green-600 hover:text-white 
-              cursor-pointer"
+              "
           >
             <CheckCircle class="size-4" /> Approve Selected
           </Button>
@@ -800,7 +799,7 @@
             onclick={openBulkDeny}
             disabled={selectedPendingIds.length === 0}
             class="gap-1.5 text-destructive border-destructive hover:bg-destructive hover:text-white 
-              cursor-pointer"
+              "
           >
             <XCircle class="size-4" /> Deny Selected
           </Button>
@@ -1020,7 +1019,6 @@
                   <Button
                     size="sm"
                     onclick={() => openApprove(selectedRequest)}
-                    class="cursor-pointer"
                   >
                     <CheckCircle class="w-3.5 h-3.5" />
                     Approve
@@ -1029,7 +1027,6 @@
                     size="sm"
                     variant="destructive"
                     onclick={() => openDeny(selectedRequest)}
-                    class="cursor-pointer"
                   >
                     <XCircle class="w-3.5 h-3.5" />
                     Deny
@@ -1162,7 +1159,6 @@
                   size="sm"
                   variant="destructive"
                   onclick={() => openCancel(req)}
-                  class="cursor-pointer"
                 >
                   <Trash2 class="size-4" />
                   Cancel Request

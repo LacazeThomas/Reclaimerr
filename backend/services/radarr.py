@@ -489,6 +489,32 @@ class RadarrClient:
             "POST", "movie", json=payload, error_context="Radarr add movie"
         )
 
+    async def add_import_exclusion(self, movie_id: int) -> None:
+        """Add an exclusion while retaining the unmonitored movie entry."""
+        movie = await self.get_movie(movie_id)
+        raw = movie.raw or {}
+        tmdb_id = as_int(raw.get("tmdbId"))
+        if tmdb_id is None or tmdb_id <= 0:
+            raise ValueError("Radarr movie is missing a TMDB ID; exclusion not added")
+        _, exclusions = await self._make_request("GET", "exclusions")
+        if not isinstance(exclusions, list):
+            raise ValueError("Invalid Radarr import exclusions response")
+        if any(
+            isinstance(e, Mapping) and as_int(e.get("tmdbId")) == tmdb_id
+            for e in exclusions
+        ):
+            return
+        await self._make_request(
+            "POST",
+            "exclusions",
+            json={
+                "tmdbId": tmdb_id,
+                "movieTitle": movie.title,
+                "movieYear": movie.year,
+            },
+            error_context="Radarr add import exclusion",
+        )
+
     async def remove_import_exclusion(self, tmdb_id: int) -> bool:
         """Remove the import exclusion for a TMDB ID. Returns whether one existed."""
         _, data = await self._make_request("GET", "exclusions")

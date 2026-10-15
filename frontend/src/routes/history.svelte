@@ -1,5 +1,5 @@
 ﻿<script lang="ts">
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy, onMount, untrack } from "svelte";
   import HistoryIcon from "@lucide/svelte/icons/history";
   import RotateCw from "@lucide/svelte/icons/rotate-cw";
   import Search from "@lucide/svelte/icons/search";
@@ -117,6 +117,30 @@
 
   const activityItems = $derived(activityData?.items ?? []);
   const totalActivity = $derived(activityData?.total ?? 0);
+  const hasHistoryFilters = $derived(
+    historySearch.length > 0 || historyMediaType !== "all",
+  );
+  const hasActivityFilters = $derived(
+    selectedActivityStatus !== "all" ||
+      (isAdmin && selectedActivityType !== "all"),
+  );
+
+  const clearHistoryFilters = () => {
+    if (historySearchTimer) {
+      clearTimeout(historySearchTimer);
+      historySearchTimer = null;
+    }
+    const mediaTypeChanged = historyMediaType !== "all";
+    historySearch = "";
+    historyMediaType = "all";
+    // Changing media type triggers the existing reload effect.
+    if (!mediaTypeChanged) void loadHistory(1);
+  };
+
+  const clearActivityFilters = () => {
+    selectedActivityStatus = "all";
+    selectedActivityType = isAdmin ? "all" : BackgroundJobType.CandidateFileOp;
+  };
 
   const statusOptions = [
     { value: "all", label: "All statuses" },
@@ -163,7 +187,7 @@
     historySortOrder;
     historyPerPage;
     if (mounted) {
-      void loadHistory(1);
+      untrack(() => void loadHistory(1));
     }
   });
 
@@ -173,7 +197,7 @@
     selectedActivityType;
     activityPerPage;
     if (mounted && canViewDetailedHistory) {
-      void loadActivity(1);
+      untrack(() => void loadActivity(1));
     }
   });
 
@@ -662,6 +686,18 @@
           </div>
         </div>
 
+        {#if hasActivityFilters}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onclick={clearActivityFilters}
+            aria-label="Clear recent activity filters"
+          >
+            Clear filters
+          </Button>
+        {/if}
+
         <ErrorBox error={activityError} />
 
         <div class="rounded-2xl border border-border bg-card">
@@ -676,7 +712,9 @@
             </div>
           {:else if activityItems.length === 0}
             <div class="p-8 text-center text-muted-foreground">
-              No recent activity matched the current filters.
+              {hasActivityFilters
+                ? "No recent activity matches your filters. Clear the filters to see all available activity."
+                : "No recent activity yet."}
             </div>
           {:else}
             <div class="divide-y divide-border">
@@ -917,6 +955,18 @@
         </div>
       </div>
 
+      {#if hasHistoryFilters}
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onclick={clearHistoryFilters}
+          aria-label="Clear reclaim feed search and filters"
+        >
+          Clear filters
+        </Button>
+      {/if}
+
       <ErrorBox error={historyError} />
 
       <div class="rounded-2xl border border-border bg-card">
@@ -930,7 +980,9 @@
           </div>
         {:else if !historyData || historyData.items.length === 0}
           <div class="p-8 text-center text-muted-foreground">
-            No reclaim history found.
+            {hasHistoryFilters
+              ? "No reclaimed media matches your search and filters. Clear the filters or try a different search."
+              : "No media has been reclaimed yet."}
           </div>
         {:else}
           <div class="divide-y divide-border">
@@ -964,6 +1016,23 @@
                     <p class="text-sm text-muted-foreground">
                       {historyActorLabel(entry) ?? "Recorded reclaim activity"}
                     </p>
+                    {#if entry.attributes?.arr_list_exclusion === "failed"}
+                      <p class="text-sm text-amber-600 dark:text-amber-400">
+                        Files removed; list exclusion could not be added.
+                      </p>
+                      <p class="text-xs text-muted-foreground">
+                        {entry.attributes.arr_list_exclusion_error}
+                      </p>
+                    {:else if entry.attributes?.arr_list_exclusion === "added"}
+                      <p class="text-sm text-muted-foreground">
+                        Import list exclusion added
+                      </p>
+                    {:else if entry.attributes?.arr_list_exclusion === "skipped"}
+                      <p class="text-sm text-muted-foreground">
+                        List exclusion unchanged (requires an ended show and
+                        removal of its latest regular season)
+                      </p>
+                    {/if}
                     {#if entry.attributes?.sonarr_monitor_new_seasons === "failed"}
                       <p class="text-sm text-amber-600 dark:text-amber-400">
                         Files removed; new-season monitoring could not be

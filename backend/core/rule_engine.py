@@ -8,6 +8,10 @@ from contextvars import ContextVar
 from datetime import UTC, date, datetime
 from typing import Any, Final, TypeAlias, cast
 
+from backend.core.playback_history_fields import (
+    HISTORY_FIELD_LABELS,
+    HISTORY_RULE_FIELDS,
+)
 from backend.core.seerr_identity import is_qualified_seerr_user_id
 from backend.core.utils.filesystem import (
     mapped_path_variants,
@@ -67,6 +71,8 @@ PLAYBACK_RULE_FIELDS = {
     "playback.last_activity_at",
     "playback.days_since_last_activity",
 }
+ALL_PLAYBACK_RULE_FIELDS = PLAYBACK_RULE_FIELDS | HISTORY_RULE_FIELDS
+
 # playback conditions scoped to one or more specific users, rather than the
 # aggregate-across-all-users semantics of PLAYBACK_RULE_FIELDS. Kept as a
 # separate set (not folded into PLAYBACK_RULE_FIELDS) because their allowed
@@ -85,6 +91,7 @@ WATCH_COMPLETION_RULE_FIELDS = {"playback.fully_watched_usernames"}
 # several keys -- Plex history keys an unshared account by its number while
 # Tautulli has the name -- so these compare through WatchUserAliasResolver.
 PLAYBACK_USERNAME_FIELDS = {
+    "playback_history.usernames",
     "playback.usernames",
     "playback.fully_watched_usernames",
 }
@@ -127,6 +134,7 @@ def normalize_rule_outcome(rule: ReclaimRule) -> str:
 
 
 FIELD_LABELS: dict[str, str] = {
+    **HISTORY_FIELD_LABELS,
     "library.id": "Library",
     "media.title": "Title",
     "media.path": "Path",
@@ -334,6 +342,12 @@ BOOLEAN_REASON_COMPANIONS: dict[str, tuple[tuple[str, str], ...]] = {
     "season.is_latest_season": (("season.season_number", "season {value}"),),
 }
 NUMERIC_FIELDS = {
+    "playback_history.play_count",
+    "playback_history.days_since_last_activity",
+    "playback_history.total_duration_minutes",
+    "playback_history.longest_duration_minutes",
+    "playback_history.unique_user_count",
+    "playback_history.days_since_last_completed",
     "media.size",
     "media.year",
     "media.days_since_added",
@@ -443,6 +457,7 @@ RESCALED_FIELD_NOTES: dict[str, str] = {
 }
 
 TEXT_FIELDS = {
+    "playback_history.usernames",
     "tmdb.id",
     "imdb.id",
     "tvdb.id",
@@ -474,6 +489,7 @@ TEXT_FIELDS = {
     "playback.fully_watched_usernames",
 }
 MULTI_VALUE_TEXT_FIELDS = {
+    "playback_history.usernames",
     "arr.tags",
     "arr.movie_ids",
     "arr.series_ids",
@@ -497,6 +513,8 @@ COUNTRY_FIELDS = {"tmdb.origin_country"}
 FAIL_CLOSED_LIST_FIELDS = LANGUAGE_FIELDS | COUNTRY_FIELDS
 LIBRARY_FIELDS = {"library.id"}
 BOOLEAN_FIELDS = {
+    "playback_history.has_activity",
+    "playback_history.has_completed_watch",
     "tmdb.in_collection",
     "video.hdr",
     "video.dolby_vision",
@@ -515,6 +533,8 @@ BOOLEAN_FIELDS = {
     "seerr.requester_watched_after_request",
 }
 TEMPORAL_FIELDS = {
+    "playback_history.last_activity_at",
+    "playback_history.last_completed_at",
     "watch.last_viewed_at",
     "collection.latest_sibling_watched_at",
     "playback.last_activity_at",
@@ -623,6 +643,7 @@ FIELD_ALLOWED_OPERATORS: dict[str, set[str]] = {
     **{field: set(MULTI_VALUE_TEXT_OPERATORS) for field in MEDIA_SERVER_GENRE_FIELDS},
     "media_server.collections": set(MULTI_VALUE_TEXT_OPERATORS),
     "playback.usernames": set(MULTI_VALUE_TEXT_OPERATORS),
+    "playback_history.usernames": set(MULTI_VALUE_TEXT_OPERATORS),
     "playback.fully_watched_usernames": set(MULTI_VALUE_TEXT_OPERATORS),
     "favorites.usernames": set(MULTI_VALUE_TEXT_OPERATORS),
     "seerr.requested_by_user_ids": set(SEERR_REQUESTER_ID_OPERATORS),
@@ -718,6 +739,7 @@ TARGET_SCOPE_ALLOWED_FIELDS: dict[str, set[str]] = {
         "watch.never_watched",
         "watch.view_count",
         *PLAYBACK_RULE_FIELDS,
+        *HISTORY_RULE_FIELDS,
         *USER_SCOPED_PLAYBACK_FIELDS,
         *WATCH_COMPLETION_RULE_FIELDS,
         "movie.version_count",
@@ -799,6 +821,7 @@ TARGET_SCOPE_ALLOWED_FIELDS: dict[str, set[str]] = {
         "watch.never_watched",
         "watch.view_count",
         *PLAYBACK_RULE_FIELDS,
+        *HISTORY_RULE_FIELDS,
         "playback.user_watched_duration_minutes",
         *WATCH_COMPLETION_RULE_FIELDS,
     },
@@ -885,6 +908,7 @@ TARGET_SCOPE_ALLOWED_FIELDS: dict[str, set[str]] = {
         "watch.never_watched",
         "watch.view_count",
         *PLAYBACK_RULE_FIELDS,
+        *HISTORY_RULE_FIELDS,
         "playback.user_watched_duration_minutes",
         *WATCH_COMPLETION_RULE_FIELDS,
     },
@@ -966,6 +990,7 @@ TARGET_SCOPE_ALLOWED_FIELDS: dict[str, set[str]] = {
         "watch.never_watched",
         "watch.view_count",
         *PLAYBACK_RULE_FIELDS,
+        *HISTORY_RULE_FIELDS,
         *USER_SCOPED_PLAYBACK_FIELDS,
         *WATCH_COMPLETION_RULE_FIELDS,
     },
@@ -1790,7 +1815,13 @@ def _playback_context(
             if resolver
             else RULE_VALUE_UNAVAILABLE
         )
-        for field in PLAYBACK_RULE_FIELDS
+        for field in ALL_PLAYBACK_RULE_FIELDS
+    } | {
+        "_history_sources": resolver.resolve(
+            target_scope, target_id, "_history_sources"
+        )
+        if resolver
+        else []
     }
 
 
@@ -3400,7 +3431,18 @@ def _evaluate_condition(
     elif not _matches_operator(actual, operator, expected, field=field):
         return False
     matched[field] = actual.isoformat() if isinstance(actual, datetime) else actual
-    reasons.append(_build_reason_condition(field, operator, expected, actual, context))
+    reason = _build_reason_condition(field, operator, expected, actual, context)
+    if field in HISTORY_RULE_FIELDS:
+        sources = context.get("_history_sources", [])
+        sources = sources if isinstance(sources, list) else []
+        reason["history_sources"] = sources
+        if sources:
+            summary = ", ".join(
+                f"{source['server']} ({source['provider'].replace('_', ' ').title()})"
+                for source in sources
+            )
+            reason["display"] = f"{reason['display']} [History: {summary}]"
+    reasons.append(reason)
     return True
 
 

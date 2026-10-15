@@ -149,7 +149,7 @@
               type="submit"
               disabled={loading}
               size="lg"
-              class="w-full cursor-pointer hover:bg-primary-hover"
+              class="w-full hover:bg-primary-hover"
             >
               <ShieldCheck class="size-5 mr-2" />
               {loading ? "Creating account…" : "Create Admin Account"}

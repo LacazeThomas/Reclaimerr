@@ -50,7 +50,7 @@
     <Button
       variant="outline"
       size="sm"
-      class="cursor-pointer gap-2"
+      class="gap-2"
       href="/api/settings/backups/download"
       download
     >
@@ -90,7 +90,7 @@
           <Button
             variant="ghost"
             size="sm"
-            class="cursor-pointer gap-2"
+            class="gap-2"
             href={`/api/settings/backups/${encodeURIComponent(backup.name)}`}
             download
           >
