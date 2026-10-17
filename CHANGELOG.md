@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Jellyfin API-key item lookups now work when checking active playback, resolving deletion paths, and verifying episode ordering, instead of returning HTTP 400 because no user was attached.
+- **Defer When Playback Status Is Unavailable** now applies to final media-server and Radarr/Sonarr deletion-path checks as well as the initial session check. Known playing or paused media remains protected when the setting is off.
+- Unmonitor-and-delete actions no longer report success or mark movies and series removed when file removal was deferred, failed, or could not be confirmed. Affected candidates remain available to retry, and confirmed local removals use a media-server path scan.
+- Disabled media servers no longer block deletion through playback checks on shared paths.
+- Playback-check failures now log the service, configuration, failure stage, and HTTP status or error type at warning level, without exposing credentials. Missing runtime clients are identified explicitly so a successful connection test no longer leaves the cause unexplained.
+
 ## [0.5.8] - 2026-10-15
 
 ### Added

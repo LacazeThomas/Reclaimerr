@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy import select
@@ -21,6 +22,7 @@ from backend.database.models import (
     ServiceConfig,
 )
 from backend.enums import MediaType, Service
+from backend.models.live_playback import PlaybackDeferral, PlaybackDeferred
 from backend.tasks import cleanup
 
 
@@ -75,6 +77,66 @@ class FailingRadarr(FakeRadarr):
         add_import_exclusion: bool = False,
     ) -> None:
         raise RuntimeError("radarr unavailable")
+
+
+@pytest.mark.parametrize(
+    "outcome", ["deferred", "failed", "disabled", "deleted", "local"]
+)
+def test_movie_unmonitor_requires_confirmed_removal(monkeypatch, tmp_path, outcome):
+    async def run():
+        folder = tmp_path / "Movie"
+        source = folder / "Movie.mkv"
+        if outcome == "local":
+            folder.mkdir()
+            source.write_bytes(b"movie")
+        engine, sessions = await _make_session(monkeypatch)
+        try:
+            async with sessions() as db:
+                movie_id, candidates, config_id = await _seed_movie_version_case(
+                    db,
+                    version_paths=[str(source)],
+                    candidate_version_indexes=[0],
+                    arr_action="unmonitor",
+                    arr_movie_path=str(folder),
+                    media_server_fallback_enabled=outcome != "disabled",
+                )
+            media = FakeMediaServer()
+            if outcome in {"deferred", "local"}:
+                media.delete_item = AsyncMock(
+                    side_effect=PlaybackDeferred(
+                        PlaybackDeferral("playback_unavailable", "2026-10-17", (1,))
+                    )
+                )
+            elif outcome == "failed":
+                media.delete_item = AsyncMock(
+                    side_effect=ValueError("native removal failed")
+                )
+            _patch_services(monkeypatch, FakeRadarr(), config_id, media)
+            monkeypatch.setattr(cleanup, "_dispatch_reclaim_event", AsyncMock())
+            if outcome == "deferred":
+                with pytest.raises(PlaybackDeferred):
+                    await cleanup._delete_movie_candidates(frozenset(candidates))
+            else:
+                count = await cleanup._delete_movie_candidates(frozenset(candidates))
+                assert count == int(outcome in {"deleted", "local"})
+            success = outcome in {"deleted", "local"}
+            async with sessions() as db:
+                assert (
+                    (await db.get(Movie, movie_id)).removed_at is not None
+                ) is success
+                assert (
+                    await db.get(ReclaimCandidate, candidates[0]) is None
+                ) is success
+                assert len((await db.scalars(select(ReclaimHistory))).all()) == int(
+                    success
+                )
+            if outcome == "local":
+                media.delete_item.assert_not_awaited()
+                assert not source.exists()
+        finally:
+            await engine.dispose()
+
+    asyncio.run(run())
 
 
 class FakeMediaServer:
@@ -1146,15 +1208,19 @@ def test_list_exclusion_keeps_radarr_entry_after_removal(
                     == b"movie"
                 )
             else:
-                assert (
-                    await cleanup._delete_movie_candidates(
-                        restrict_to_ids=frozenset(candidates), approved_by="tester"
-                    )
-                    == 1
-                )
+                assert await cleanup._delete_movie_candidates(
+                    restrict_to_ids=frozenset(candidates), approved_by="tester"
+                ) == int(failure != "remove")
             assert radarr.deleted == []
             assert excluded == ([] if failure == "remove" else [55])
             async with sessions() as db:
+                if failure == "remove":
+                    assert source.exists()
+                    assert (
+                        await db.get(ReclaimCandidate, candidates[0])
+                    ).last_delete_error
+                    assert (await db.scalars(select(ReclaimHistory))).all() == []
+                    return
                 history = (await db.execute(select(ReclaimHistory))).scalar_one()
                 assert history.attributes["arr_list_exclusion"] == (
                     "failed" if failure else "added"

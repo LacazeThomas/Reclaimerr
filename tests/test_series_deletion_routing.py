@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from types import SimpleNamespace
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy import select
@@ -22,6 +23,7 @@ from backend.database.models import (
     ServiceConfig,
 )
 from backend.enums import MediaType, Service
+from backend.models.live_playback import PlaybackDeferral, PlaybackDeferred
 from backend.tasks import cleanup
 
 
@@ -94,6 +96,9 @@ class FakeSonarr:
     async def refresh_series(self, series_ids: list[int]) -> None:
         self.refreshed.append(series_ids)
 
+    async def unmonitor_series(self, series_ids: list[int]) -> None:
+        pass
+
 
 class FailingSonarr(FakeSonarr):
     async def delete_series(
@@ -103,6 +108,71 @@ class FailingSonarr(FakeSonarr):
         add_import_exclusion: bool = False,
     ) -> None:
         raise RuntimeError("sonarr unavailable")
+
+
+@pytest.mark.parametrize(
+    "outcome", ["deferred", "failed", "disabled", "no-server", "deleted", "local"]
+)
+def test_series_unmonitor_requires_confirmed_removal(monkeypatch, tmp_path, outcome):
+    async def run():
+        folder = tmp_path / "Show"
+        if outcome == "local":
+            folder.mkdir()
+            (folder / "episode.mkv").write_bytes(b"episode")
+        engine, sessions = await _make_session(monkeypatch)
+        try:
+            async with sessions() as db:
+                candidate_id, configs, ids = await _seed_series_case(
+                    db,
+                    target_scope="series",
+                    arr_action="unmonitor",
+                    arr_series_paths=[str(folder)],
+                    series_service_path=str(folder),
+                    media_server_fallback_enabled=outcome != "disabled",
+                )
+                series_id = (await db.get(ReclaimCandidate, candidate_id)).series_id
+            media = FakeMediaServer()
+            if outcome in {"deferred", "local"}:
+                media.delete_item = AsyncMock(
+                    side_effect=PlaybackDeferred(
+                        PlaybackDeferral("playback_unavailable", "2026-10-17", (1,))
+                    )
+                )
+            elif outcome == "failed":
+                media.delete_item = AsyncMock(
+                    side_effect=ValueError("native removal failed")
+                )
+            _patch_services(
+                monkeypatch,
+                {configs[0]: FakeSonarr({ids[0]: []})},
+                None if outcome == "no-server" else media,
+            )
+            monkeypatch.setattr(cleanup, "_dispatch_reclaim_event", AsyncMock())
+            if outcome == "deferred":
+                with pytest.raises(PlaybackDeferred):
+                    await cleanup._delete_series_candidates(frozenset([candidate_id]))
+            else:
+                count = await cleanup._delete_series_candidates(
+                    frozenset([candidate_id])
+                )
+                assert count == int(outcome in {"deleted", "local"})
+            success = outcome in {"deleted", "local"}
+            async with sessions() as db:
+                assert (
+                    (await db.get(Series, series_id)).removed_at is not None
+                ) is success
+                assert (await db.get(ReclaimCandidate, candidate_id) is None) is success
+                assert len((await db.scalars(select(ReclaimHistory))).all()) == int(
+                    success
+                )
+            if outcome == "local":
+                media.delete_item.assert_not_awaited()
+                assert media.scanned_paths == [str(folder)]
+                assert not folder.exists()
+        finally:
+            await engine.dispose()
+
+    asyncio.run(run())
 
 
 async def _make_session(monkeypatch):

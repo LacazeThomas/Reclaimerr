@@ -8664,6 +8664,7 @@ async def _reconcile_media_server_after_delete(
     paths: Iterable[str | None],
     allow_delete_item: bool,
     context: str,
+    require_removal: bool = False,
 ) -> None:
     """Keep the media server's library in step with files we already removed.
 
@@ -8672,18 +8673,33 @@ async def _reconcile_media_server_after_delete(
     server to re-check a path it already indexed, so it runs either way -
     without it the server keeps serving an entry whose files are gone, the next
     sync re-imports the item, and the scan re-flags it with a fresh review
-    period.  Always best effort; never raises.
+    period. If local removal could not be confirmed, ``require_removal`` makes
+    the native deletion mandatory before finalizing the candidate.
     """
     main_service = service_manager.main_media_server
     if main_service is None:
+        if require_removal:
+            raise ValueError(
+                "File removal could not be confirmed and no media server is available"
+            )
         return
 
     if allow_delete_item and item_id:
         try:
             await main_service.delete_item(item_id)
+        except PlaybackDeferred:
+            raise
         except Exception as e:
             LOG.warning(f"{context}: media server delete_item failed: {e}")
+            if require_removal:
+                raise
         return
+
+    if require_removal:
+        raise ValueError(
+            "File removal could not be confirmed; media-server fallback deletion "
+            "is disabled or the media-server item is unavailable"
+        )
 
     seen: set[str] = set()
     for path in paths:
@@ -10100,6 +10116,7 @@ async def _delete_movie_candidates(
                             }
 
                             if not keep_files:
+                                locally_removed_version_ids: set[int] = set()
                                 # Capture existing paths before removal: resolve_path only
                                 # returns paths that still exist.
                                 exclusion_source_paths = (
@@ -10143,6 +10160,8 @@ async def _delete_movie_candidates(
                                                 siblings=True,
                                             )
                                             sibling_cleanup(local_path)
+                                            if not local_path.exists():
+                                                locally_removed_version_ids.add(ver.id)
                                             playback_step_completed(
                                                 "Cleaned up matching files at "
                                                 + str(local_path)
@@ -10156,9 +10175,10 @@ async def _delete_movie_candidates(
 
                                 # keep the media server library in sync with the
                                 # files we just removed
+                                service_versions: list[MovieVersion] = []
                                 if unmonitor_service_type is not None:
                                     if is_whole_movie:
-                                        service_versions: list[MovieVersion] = [
+                                        service_versions = [
                                             v
                                             for v in movie.versions
                                             if v.service == unmonitor_service_type
@@ -10176,6 +10196,11 @@ async def _delete_movie_candidates(
                                         if ver.service_item_id in handled_item_ids:
                                             continue
                                         handled_item_ids.add(ver.service_item_id)
+                                        item_files_removed = all(
+                                            v.id in locally_removed_version_ids
+                                            for v in service_versions
+                                            if v.service_item_id == ver.service_item_id
+                                        )
                                         # a kept version sharing this media server
                                         # item (e.g. a multi version Plex entry on
                                         # one ratingKey) must never be deleted with
@@ -10196,8 +10221,28 @@ async def _delete_movie_candidates(
                                             allow_delete_item=(
                                                 media_server_fallback_enabled
                                                 and not shares_item_with_kept_version
+                                                and not item_files_removed
                                             ),
                                             context=f"movie cleanup '{movie.title}'",
+                                            require_removal=not item_files_removed,
+                                        )
+
+                                if (
+                                    unmonitor_service_type is None
+                                    or not service_versions
+                                ):
+                                    target_versions = [
+                                        v
+                                        for v in movie.versions
+                                        if is_whole_movie
+                                        or v.id in unmonitor_target_version_ids
+                                    ]
+                                    if not target_versions or any(
+                                        v.id not in locally_removed_version_ids
+                                        for v in target_versions
+                                    ):
+                                        raise ValueError(
+                                            "Movie file removal could not be confirmed"
                                         )
 
                                 if (
@@ -10344,6 +10389,14 @@ async def _delete_movie_candidates(
             raise
         except Exception as e:
             LOG.error(f"Error finalizing movie unmonitor state: {e}", exc_info=True)
+            await _mark_candidate_delete_failures(
+                [
+                    cid
+                    for info in movies_to_unmonitor
+                    for cid in info["all_candidate_ids"]
+                ],
+                f"Movie removal could not be completed: {e}",
+            )
         await _best_effort_radarr_rescan(
             radarr_refresh_after_unmonitor,
             context="movie unmonitor cleanup",
@@ -10767,6 +10820,7 @@ async def _delete_series_candidates(
 
                     if series:
                         if not keep_files:
+                            locally_removed = False
                             # delete series folder from disk using arr_series_path
                             s_refs = series_data.get(series_id, {}).get("refs", [])
                             for _, _, arr_series_path in s_refs:
@@ -10786,6 +10840,7 @@ async def _delete_series_candidates(
                                             path=str(local_path), directory=True
                                         )
                                         shutil.rmtree(str(local_path))
+                                        locally_removed = not local_path.exists()
                                         playback_step_completed(
                                             "Removed folder " + str(local_path)
                                         )
@@ -10813,8 +10868,14 @@ async def _delete_series_candidates(
                                 await _reconcile_media_server_after_delete(
                                     item_id=media_ref.service_id,
                                     paths=[media_ref.path],
-                                    allow_delete_item=media_server_fallback_enabled,
+                                    allow_delete_item=media_server_fallback_enabled
+                                    and not locally_removed,
                                     context=f"series cleanup '{series.title}'",
+                                    require_removal=not locally_removed,
+                                )
+                            elif not locally_removed:
+                                raise ValueError(
+                                    "Series file removal could not be confirmed"
                                 )
 
                             series.removed_at = datetime.now(UTC)
@@ -10884,6 +10945,10 @@ async def _delete_series_candidates(
             raise
         except Exception as e:
             LOG.error(f"Error finalizing series unmonitor state: {e}", exc_info=True)
+            await _mark_candidate_delete_failures(
+                [info["candidate_id"] for info in series_to_unmonitor],
+                f"Series removal could not be completed: {e}",
+            )
         await _best_effort_sonarr_refresh(
             sonarr_refresh_after_unmonitor,
             context="series unmonitor cleanup",

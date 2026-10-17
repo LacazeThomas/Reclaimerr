@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from backend.enums import Service
 from backend.services.episode_ordering import (
     EpisodeOrderingSnapshot,
     normalize_episode_order,
@@ -242,17 +243,31 @@ def test_plex_inherited_order_is_cached_and_override_takes_precedence():
 @pytest.mark.parametrize(
     "raw, expected", [("", "aired"), (None, "aired"), ("dvd", "dvd"), ("digital", None)]
 )
-def test_emby_and_jellyfin_effective_order(raw, expected):
+@pytest.mark.parametrize("service", [Service.EMBY, Service.JELLYFIN])
+def test_emby_and_jellyfin_effective_order(raw, expected, service):
     from backend.services.emby_base import EmbyServiceBase
 
     async def run():
+        item = {"Id": "a", "Type": "Series", "DisplayOrder": raw}
         client = SimpleNamespace(
+            service_type=service,
             _make_request=AsyncMock(
-                return_value={"Type": "Series", "DisplayOrder": raw}
-            )
+                return_value={"Items": [item]} if service is Service.JELLYFIN else item
+            ),
         )
         assert await EmbyServiceBase.get_series_episode_order(client, "a") == expected
-        client._make_request.assert_awaited_once_with("Items/a", timeout=10)
+        if service is Service.EMBY:
+            client._make_request.assert_awaited_once_with("Items/a", timeout=10)
+        else:
+            client._make_request.assert_awaited_once_with(
+                "Items",
+                params={
+                    "Ids": "a",
+                    "Fields": "Path,MediaSources",
+                    "EnableUserData": False,
+                },
+                timeout=10,
+            )
 
     asyncio.run(run())
 

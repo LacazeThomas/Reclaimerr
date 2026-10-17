@@ -49,6 +49,7 @@ from backend.models.services.emby_base import (
     EmbyUserDataBase,
 )
 from backend.models.services.health import HealthResult
+from backend.services.emby_items import get_item_details
 from backend.services.live_sessions import emby_sessions, resolve_session_paths
 from backend.services.playback_guard import (
     guard_native_removal,
@@ -185,7 +186,7 @@ class EmbyServiceBase:
         """Read the series display order; the API's empty default is aired."""
         from backend.services.episode_ordering import normalize_episode_order
 
-        item = await self._make_request(f"Items/{item_id}", timeout=10)
+        item = await get_item_details(self, self.service_type, item_id)
         if not isinstance(item, dict) or item.get("Type") != "Series":
             return None
         return normalize_episode_order(item.get("DisplayOrder") or "aired")
