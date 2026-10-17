@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Updated fastapi, platformdirs, and zensical.
+
 ### Fixed
 
 - Jellyfin API-key item lookups now work when checking active playback, resolving deletion paths, and verifying episode ordering, instead of returning HTTP 400 because no user was attached.
