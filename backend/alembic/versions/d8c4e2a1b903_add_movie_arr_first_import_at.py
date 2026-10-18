@@ -1,14 +1,14 @@
 """Add movie first successful Radarr import timestamp.
 
 Revision ID: d8c4e2a1b903
-Revises: a6f3d8b2c901
+Revises: c9e4f7a2b601
 """
 
 import sqlalchemy as sa
 from alembic import op
 
 revision = "d8c4e2a1b903"
-down_revision = "a6f3d8b2c901"
+down_revision = "c9e4f7a2b601"
 branch_labels = None
 depends_on = None
 
