@@ -2050,11 +2050,28 @@ async def sync_movies(
                     f"lowered ({kept_watch_count} movie(s) kept their stored values)"
                 )
 
-            # refresh per instance Radarr refs for active movies
-            await _purge_orphaned_arr_refs(session, MovieArrRef, Service.RADARR)
+            # Fetch all history before any Arr ref writes acquire SQLite's write lock.
             radarr_clients = service_manager.radarr_clients()
             if not radarr_clients and service_manager.radarr:
                 radarr_clients = {0: service_manager.radarr}
+            snapshots: list[
+                tuple[int, list[RadarrMovie], list[ArrTag], dict[int, datetime]]
+            ] = []
+            for config_id, client in radarr_clients.items():
+                all_movies = await client.get_all_movies()
+                tag_list = await client.get_tags()
+                try:
+                    first_imports = await client.get_first_import_dates()
+                except Exception as exc:
+                    LOG.warning(
+                        f"Radarr import history unavailable (config {config_id}); "
+                        f"preserving known first import dates: {exc}"
+                    )
+                    first_imports = {}
+                snapshots.append((config_id, all_movies, tag_list, first_imports))
+
+            # refresh per instance Radarr refs for active movies
+            await _purge_orphaned_arr_refs(session, MovieArrRef, Service.RADARR)
             if radarr_clients:
                 # purge legacy rows written before multi-arr support (service_config_id=0)
                 await session.execute(
@@ -2090,23 +2107,6 @@ async def sync_movies(
                 movie_tags: dict[int, set[str]] = {}
                 movie_arr_files: dict[int, list[tuple[int, str | None, datetime]]] = {}
                 movie_first_imports: dict[int, datetime] = {}
-                snapshots: list[
-                    tuple[int, list[RadarrMovie], list[ArrTag], dict[int, datetime]]
-                ] = []
-                for config_id, client in radarr_clients.items():
-                    all_movies = await client.get_all_movies()
-                    tag_list = await client.get_tags()
-                    try:
-                        first_imports = await client.get_first_import_dates()
-                    except Exception as exc:
-                        LOG.warning(
-                            f"Radarr import history unavailable (config {config_id}); "
-                            f"preserving known first import dates: {exc}"
-                        )
-                        first_imports = {}
-                    snapshots.append((config_id, all_movies, tag_list, first_imports))
-
-                # Network pagination must finish before acquiring SQLite's write lock.
                 for config_id, all_movies, tag_list, first_imports in snapshots:
                     await session.execute(
                         sql_delete(MovieArrRef).where(

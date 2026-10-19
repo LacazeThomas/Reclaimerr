@@ -10,6 +10,7 @@ import pytest
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy import create_engine, inspect, select, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from backend.database import Base
@@ -214,10 +215,16 @@ def test_first_import_dates_discard_partial_fetch_on_failure():
     asyncio.run(run())
 
 
-def test_sync_movies_preserves_first_import_across_upgrades_and_failures(monkeypatch):
+def test_sync_movies_preserves_first_import_without_history_write_lock(
+    monkeypatch, tmp_path
+):
     async def run():
-        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        engine = create_async_engine(
+            f"sqlite+aiosqlite:///{tmp_path / 'movies.db'}",
+            connect_args={"timeout": 0.1},
+        )
         async with engine.begin() as conn:
+            await conn.execute(text("PRAGMA journal_mode=WAL"))
             await conn.run_sync(Base.metadata.create_all)
         sessions = async_sessionmaker(engine, expire_on_commit=False)
         clients = {
@@ -277,6 +284,7 @@ def test_sync_movies_preserves_first_import_across_upgrades_and_failures(monkeyp
         )
         phase = 0
         history_calls = []
+        history_write_errors = []
 
         async def request(client, method, endpoint, **kwargs):
             if endpoint == "movie":
@@ -297,6 +305,13 @@ def test_sync_movies_preserves_first_import_across_upgrades_and_failures(monkeyp
             if endpoint == "tag":
                 return 200, []
             assert endpoint == "history"
+            # History pagination must leave SQLite available to other writers.
+            # Record lock failures so sync's history-error fallback cannot hide them.
+            try:
+                async with engine.begin() as conn:
+                    await conn.execute(text("UPDATE movies SET title=title WHERE id=1"))
+            except OperationalError as exc:
+                history_write_errors.append(str(exc))
             history_calls.append(client.base_url)
             if phase == 2 or (phase == 3 and client.base_url.endswith("two")):
                 raise ConnectionError("history unavailable")
@@ -334,6 +349,7 @@ def test_sync_movies_preserves_first_import_across_upgrades_and_failures(monkeyp
                             == 4
                         )
                 assert len(history_calls) == 12
+                assert not history_write_errors
         finally:
             for client in clients.values():
                 await client.session.close()
